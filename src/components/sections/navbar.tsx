@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Flame, ChevronDown, Menu, X } from "lucide-react";
+import { Flame, ChevronDown, Menu, X, LogIn, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase-client";
+import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
     { label: "Home", href: "#home" },
@@ -11,8 +14,6 @@ const navLinks = [
     { label: "Toolkit", href: "#toolkit" },
     { label: "Diet Plan", href: "#diet" },
     { label: "Roadmap", href: "#roadmap" },
-    { label: "Progress", href: "/progress" },
-    { label: "PRs", href: "/prs" },
 ];
 
 const moreLinks = [
@@ -25,6 +26,18 @@ const moreLinks = [
 export function Navbar() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
+    const [user, setUser] = useState<User | null>(null);
+
+    useEffect(() => {
+        const supabase = createClient();
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setUser(user);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
 
     return (
         <motion.nav
@@ -88,10 +101,21 @@ export function Navbar() {
 
                 {/* Desktop Actions */}
                 <div className="hidden items-center gap-3 md:flex">
-                    <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0">
-                        <Flame className="mr-2 h-4 w-4" />
-                        AI Coach
-                    </Button>
+                    {user ? (
+                        <Link href="/dashboard">
+                            <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0">
+                                <LayoutDashboard className="mr-2 h-4 w-4" />
+                                Dashboard
+                            </Button>
+                        </Link>
+                    ) : (
+                        <Link href="/auth/signin">
+                            <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0">
+                                <LogIn className="mr-2 h-4 w-4" />
+                                Sign In
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Mobile Toggle */}
@@ -121,10 +145,21 @@ export function Navbar() {
                         </a>
                     ))}
                     <div className="mt-3 flex flex-col gap-2 border-t border-white/5 pt-3">
-                        <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold w-full">
-                            <Flame className="mr-2 h-4 w-4" />
-                            AI Coach
-                        </Button>
+                        {user ? (
+                            <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
+                                <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold w-full">
+                                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                                    Dashboard
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Link href="/auth/signin" onClick={() => setMobileOpen(false)}>
+                                <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold w-full">
+                                    <LogIn className="mr-2 h-4 w-4" />
+                                    Sign In
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 </motion.div>
             )}
