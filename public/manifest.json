@@ -1,0 +1,41 @@
+{
+    "name": "ForgeFit — AI Fitness Platform",
+    "short_name": "ForgeFit",
+    "description": "AI-powered fitness & nutrition platform. Get personalized workouts, diet plans, macro analysis, and real-time coaching — powered by LLaMA 3.3 70B.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#030712",
+    "theme_color": "#ff6b2b",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/splash.png",
+            "sizes": "1280x640",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "ForgeFit — Forge Your Dream Physique"
+        }
+    ],
+    "categories": [
+        "fitness",
+        "health",
+        "lifestyle"
+    ],
+    "lang": "en",
+    "dir": "ltr"
+}
