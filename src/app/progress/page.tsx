@@ -1,120 +1,89 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-client";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Flame, LogOut, Loader2, ArrowLeft, TrendingUp, Plus, Trash2, Scale, Ruler } from "lucide-react";
+import { ArrowLeft, TrendingUp, Plus, Trash2, Scale, Ruler, Loader2 } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
 interface ProgressEntry {
     id: string;
-    workout_type: string;
-    duration_minutes: number | null;
-    notes: string | null;
-    mood: string | null;
-    body_weight_kg: number | null;
+    metric: string;
+    value: number;
+    notes: string;
     logged_at: string;
 }
 
 const METRICS = ["Body Weight", "Waist Size", "Chest Size", "Arm Size", "Thigh Size", "Body Fat %"];
+const STORAGE_KEY = "forgefit_progress";
+
+function getEntries(): ProgressEntry[] {
+    if (typeof window === "undefined") return [];
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+}
+
+function saveEntries(entries: ProgressEntry[]) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
 
 export default function ProgressPage() {
     const [entries, setEntries] = useState<ProgressEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [userEmail, setUserEmail] = useState("");
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedChart, setSelectedChart] = useState("Body Weight");
     const [formMetric, setFormMetric] = useState("");
     const [formValue, setFormValue] = useState("");
     const [formDate, setFormDate] = useState(new Date().toISOString().split("T")[0]);
     const [formNotes, setFormNotes] = useState("");
-    const [saving, setSaving] = useState(false);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
-    const router = useRouter();
-    const supabase = createClient();
 
-    const fetchEntries = useCallback(async () => {
-        try {
-            const res = await fetch("/api/body-progress");
-            if (res.ok) {
-                const data = await res.json();
-                setEntries(data);
-            }
-        } catch {
-            // silent
-        } finally {
-            setLoading(false);
-        }
+    const refresh = useCallback(() => {
+        setEntries(getEntries());
+        setLoading(false);
     }, []);
 
-    useEffect(() => {
-        fetchEntries();
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user) setUserEmail(user.email || "");
-        });
-    }, [fetchEntries, supabase.auth]);
+    useEffect(() => { refresh(); }, [refresh]);
 
-    const handleSignOut = async () => {
-        await supabase.auth.signOut();
-        router.push("/login");
-        router.refresh();
-    };
-
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formMetric || !formValue) return;
-        setSaving(true);
-        try {
-            const res = await fetch("/api/body-progress", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    workout_type: formMetric,
-                    body_weight_kg: parseFloat(formValue),
-                    notes: formNotes || null,
-                    logged_at: new Date(formDate).toISOString(),
-                }),
-            });
-            if (res.ok) {
-                setDialogOpen(false);
-                setFormMetric("");
-                setFormValue("");
-                setFormNotes("");
-                setFormDate(new Date().toISOString().split("T")[0]);
-                fetchEntries();
-            }
-        } catch {
-            // silent
-        } finally {
-            setSaving(false);
-        }
+        const entry: ProgressEntry = {
+            id: crypto.randomUUID(),
+            metric: formMetric,
+            value: parseFloat(formValue),
+            notes: formNotes,
+            logged_at: new Date(formDate).toISOString(),
+        };
+        const updated = [entry, ...getEntries()];
+        saveEntries(updated);
+        setEntries(updated);
+        setDialogOpen(false);
+        setFormMetric("");
+        setFormValue("");
+        setFormNotes("");
+        setFormDate(new Date().toISOString().split("T")[0]);
     };
 
-    const handleDelete = async (id: string) => {
-        setDeletingId(id);
-        try {
-            const res = await fetch(`/api/body-progress/${id}`, { method: "DELETE" });
-            if (res.ok) fetchEntries();
-        } catch {
-            // silent
-        } finally {
-            setDeletingId(null);
-        }
+    const handleDelete = (id: string) => {
+        const updated = getEntries().filter((e) => e.id !== id);
+        saveEntries(updated);
+        setEntries(updated);
     };
 
-    const chartData = entries
-        .filter((e) => e.workout_type === selectedChart)
-        .sort((a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime())
-        .map((e) => ({
-            date: new Date(e.logged_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-            value: Number(e.body_weight_kg),
-        }));
+    const chartData = useMemo(() =>
+        entries
+            .filter((e) => e.metric === selectedChart)
+            .sort((a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime())
+            .map((e) => ({
+                date: new Date(e.logged_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                value: e.value,
+            })),
+        [entries, selectedChart]
+    );
 
     const getUnit = (metric: string) => {
         if (metric === "Body Fat %") return "%";
@@ -123,11 +92,7 @@ export default function ProgressPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-forge-orange" />
-            </div>
-        );
+        return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-forge-orange" /></div>;
     }
 
     return (
@@ -135,22 +100,14 @@ export default function ProgressPage() {
             <header className="sticky top-0 z-40 border-b border-forge-border bg-background/80 backdrop-blur-xl">
                 <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
                     <div className="flex items-center gap-3">
-                        <a href="/" className="flex items-center gap-2 group">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-forge-orange to-forge-orange-light">
-                                <Flame className="h-4 w-4 text-white" />
-                            </div>
+                        <a href="/" className="flex items-center gap-2">
+                            <Scale className="h-6 w-6 text-forge-orange" />
                             <span className="text-lg font-bold text-white">Forge<span className="text-forge-orange">Fit</span></span>
                         </a>
                         <span className="hidden sm:inline text-slate-600 text-sm">|</span>
                         <span className="hidden sm:inline text-sm text-slate-400">Body Progress</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <span className="hidden sm:inline text-xs text-slate-500">{userEmail}</span>
-                        <Button variant="ghost" onClick={handleSignOut} className="text-slate-400 hover:text-white hover:bg-white/5 text-sm gap-2">
-                            <LogOut className="h-4 w-4" />
-                            <span className="hidden sm:inline">Sign Out</span>
-                        </Button>
-                    </div>
+                    <a href="/" className="text-sm text-slate-400 hover:text-white transition-colors">← Back to Home</a>
                 </div>
             </header>
 
@@ -198,9 +155,8 @@ export default function ProgressPage() {
                                     <Label className="text-slate-300">Notes (optional)</Label>
                                     <Input placeholder="e.g. Morning, fasted" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange" />
                                 </div>
-                                <Button type="submit" disabled={saving || !formMetric || !formValue} className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0">
-                                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                    {saving ? "Saving..." : "Save Measurement"}
+                                <Button type="submit" disabled={!formMetric || !formValue} className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0">
+                                    <Plus className="mr-2 h-4 w-4" />Save Measurement
                                 </Button>
                             </form>
                         </DialogContent>
@@ -262,13 +218,13 @@ export default function ProgressPage() {
                                     <tbody>
                                         {entries.map((e) => (
                                             <tr key={e.id} className="border-b border-forge-border/50 hover:bg-white/2 transition-colors">
-                                                <td className="px-4 py-3 text-sm font-medium text-white">{e.workout_type}</td>
-                                                <td className="px-4 py-3 text-sm text-emerald-400 font-semibold">{Number(e.body_weight_kg)} {getUnit(e.workout_type)}</td>
+                                                <td className="px-4 py-3 text-sm font-medium text-white">{e.metric}</td>
+                                                <td className="px-4 py-3 text-sm text-emerald-400 font-semibold">{e.value} {getUnit(e.metric)}</td>
                                                 <td className="px-4 py-3 text-sm text-slate-400">{e.notes || "—"}</td>
                                                 <td className="px-4 py-3 text-sm text-slate-400">{new Date(e.logged_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(e.id)} disabled={deletingId === e.id} className="h-8 w-8 text-slate-500 hover:text-red-400 hover:bg-red-400/10">
-                                                        {deletingId === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(e.id)} className="h-8 w-8 text-slate-500 hover:text-red-400 hover:bg-red-400/10">
+                                                        <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </td>
                                             </tr>
