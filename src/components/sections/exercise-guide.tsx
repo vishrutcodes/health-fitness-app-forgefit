@@ -291,8 +291,8 @@ export function ExerciseGuide() {
                                                 <div
                                                     key={i}
                                                     className={`flex gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-300 ${activeFormTipIndex === i
-                                                            ? "bg-forge-orange/10 border-forge-orange/40 text-white shadow-lg shadow-forge-orange/5"
-                                                            : "bg-slate-900/30 border-forge-border text-slate-300"
+                                                        ? "bg-forge-orange/10 border-forge-orange/40 text-white shadow-lg shadow-forge-orange/5"
+                                                        : "bg-slate-900/30 border-forge-border text-slate-300"
                                                         }`}
                                                 >
                                                     <span className={`font-bold shrink-0 ${activeFormTipIndex === i ? "text-forge-orange" : "text-forge-orange"}`}>{i + 1}.</span>
@@ -316,8 +316,8 @@ export function ExerciseGuide() {
                                                     <div
                                                         key={i}
                                                         className={`flex gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-300 ${isActiveMistake
-                                                                ? "bg-red-500/10 border-red-500/30 text-white shadow-lg shadow-red-500/5"
-                                                                : "bg-red-500/5 border-red-500/10 text-slate-300"
+                                                            ? "bg-red-500/10 border-red-500/30 text-white shadow-lg shadow-red-500/5"
+                                                            : "bg-red-500/5 border-red-500/10 text-slate-300"
                                                             }`}
                                                     >
                                                         <span className="text-red-400 shrink-0">✗</span>
