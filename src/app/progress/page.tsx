@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useOptimistic, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, Plus, Trash2, Loader2, LogIn } from "lucide-react";
+import { TrendingUp, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { createClient } from "@/lib/supabase-client";
 import Link from "next/link";
-import type { User } from "@supabase/supabase-js";
 
 const metrics = ["Body Weight (kg)", "Waist Size (cm)", "Chest Size (cm)", "Arm Size (cm)", "Thigh Size (cm)", "Body Fat (%)"];
 
@@ -21,86 +19,51 @@ interface ProgressEntry {
     id: string;
     metric: string;
     value: number;
-    note: string | null;
+    note: string;
     date: string;
 }
 
+const STORAGE_KEY = "forgefit-progress";
+
 export default function ProgressPage() {
     const [entries, setEntries] = useState<ProgressEntry[]>([]);
-    const [optimisticEntries, addOptimistic] = useOptimistic(
-        entries,
-        (state, newEntry: ProgressEntry) => [newEntry, ...state]
-    );
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<User | null>(null);
     const [open, setOpen] = useState(false);
     const [metric, setMetric] = useState("");
     const [value, setValue] = useState("");
     const [note, setNote] = useState("");
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [filter, setFilter] = useState("Body Weight (kg)");
-    const [saving, setSaving] = useState(false);
-
-    const supabase = createClient();
-
-    const fetchEntries = useCallback(async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            if (!user) {
-                setLoading(false);
-                return;
-            }
-            const { data, error } = await supabase
-                .from("progress_records")
-                .select("*")
-                .order("date", { ascending: false });
-            if (data && !error) setEntries(data.map((d) => ({ ...d, date: d.date })));
-        } catch {
-            // Table might not exist yet
-        }
-        setLoading(false);
-    }, [supabase]);
 
     useEffect(() => {
-        fetchEntries();
-    }, [fetchEntries]);
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) setEntries(JSON.parse(saved));
+    }, []);
 
-    const handleAdd = async (e: React.FormEvent) => {
+    const save = (data: ProgressEntry[]) => {
+        setEntries(data);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    };
+
+    const handleAdd = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!metric || !value || !user) return;
-        setSaving(true);
-
+        if (!metric || !value) return;
         const newEntry: ProgressEntry = {
             id: crypto.randomUUID(),
             metric,
             value: parseFloat(value),
-            note: note || null,
+            note: note || "",
             date,
         };
-
-        addOptimistic(newEntry);
+        save([newEntry, ...entries]);
         setOpen(false);
-
-        await supabase.from("progress_records").insert({
-            user_id: user.id,
-            metric,
-            value: parseFloat(value),
-            note: note || null,
-            date,
-        });
-
         setMetric("");
         setValue("");
         setNote("");
         setDate(new Date().toISOString().split("T")[0]);
-        setSaving(false);
-        fetchEntries();
     };
 
-    const handleDelete = async (id: string) => {
-        setEntries((prev) => prev.filter((e) => e.id !== id));
-        await supabase.from("progress_records").delete().eq("id", id);
+    const handleDelete = (id: string) => {
+        save(entries.filter((e) => e.id !== id));
     };
 
     const getUnit = (m: string) => {
@@ -109,38 +72,13 @@ export default function ProgressPage() {
         return "cm";
     };
 
-    const chartData = optimisticEntries
+    const chartData = entries
         .filter((e) => e.metric === filter)
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .map((e) => ({
             date: new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
             value: e.value,
         }));
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-[#030712] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-forge-orange" />
-            </div>
-        );
-    }
-
-    if (!user) {
-        return (
-            <div className="min-h-screen bg-[#030712] flex items-center justify-center px-4">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-                    <TrendingUp className="h-16 w-16 text-forge-orange mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-white mb-2">Track Your Progress</h2>
-                    <p className="text-slate-400 mb-6 max-w-sm">Sign in to start logging your body measurements and see your transformation over time.</p>
-                    <Link href="/auth/signin?redirect=/progress">
-                        <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0 shadow-lg shadow-forge-orange/25">
-                            <LogIn className="mr-2 h-4 w-4" />Sign In to Track
-                        </Button>
-                    </Link>
-                </motion.div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-[#030712] px-4 py-8">
@@ -186,8 +124,8 @@ export default function ProgressPage() {
                                     <Label className="text-slate-300">Note (optional)</Label>
                                     <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Morning weight" className="bg-slate-900/50 border-forge-border text-white" />
                                 </div>
-                                <Button type="submit" disabled={!metric || !value || saving} className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0">
-                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                                <Button type="submit" disabled={!metric || !value} className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0">
+                                    Save
                                 </Button>
                             </form>
                         </DialogContent>
@@ -230,7 +168,7 @@ export default function ProgressPage() {
                         <CardTitle className="text-white text-lg">Measurement History</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {optimisticEntries.length > 0 ? (
+                        {entries.length > 0 ? (
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-forge-border">
@@ -242,7 +180,7 @@ export default function ProgressPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {optimisticEntries.map((e) => (
+                                    {entries.map((e) => (
                                         <TableRow key={e.id} className="border-forge-border hover:bg-white/2">
                                             <TableCell className="text-white font-medium">{e.metric}</TableCell>
                                             <TableCell className="text-emerald-400 font-bold">{e.value} {getUnit(e.metric)}</TableCell>

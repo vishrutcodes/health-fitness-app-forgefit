@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useOptimistic, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Plus, Trash2, Loader2, LogIn } from "lucide-react";
+import { Trophy, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { createClient } from "@/lib/supabase-client";
 import Link from "next/link";
-import type { User } from "@supabase/supabase-js";
 
 const exercises = ["Squat", "Bench Press", "Deadlift", "Overhead Press", "Barbell Row", "Pull Up", "Dips", "Leg Press", "Romanian Deadlift", "Incline Bench Press"];
 
@@ -25,52 +23,30 @@ interface PREntry {
     date: string;
 }
 
+const STORAGE_KEY = "forgefit-prs";
+
 export default function PRsPage() {
     const [entries, setEntries] = useState<PREntry[]>([]);
-    const [optimisticEntries, addOptimistic] = useOptimistic(
-        entries,
-        (state, newEntry: PREntry) => [newEntry, ...state]
-    );
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<User | null>(null);
     const [open, setOpen] = useState(false);
     const [exercise, setExercise] = useState("");
     const [weight, setWeight] = useState("");
     const [reps, setReps] = useState("1");
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [filter, setFilter] = useState("Squat");
-    const [saving, setSaving] = useState(false);
-
-    const supabase = createClient();
-
-    const fetchEntries = useCallback(async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            if (!user) {
-                setLoading(false);
-                return;
-            }
-            const { data, error } = await supabase
-                .from("personal_records")
-                .select("*")
-                .order("date", { ascending: false });
-            if (data && !error) setEntries(data);
-        } catch {
-            // Table might not exist yet
-        }
-        setLoading(false);
-    }, [supabase]);
 
     useEffect(() => {
-        fetchEntries();
-    }, [fetchEntries]);
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) setEntries(JSON.parse(saved));
+    }, []);
 
-    const handleAdd = async (e: React.FormEvent) => {
+    const save = (data: PREntry[]) => {
+        setEntries(data);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    };
+
+    const handleAdd = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!exercise || !weight || !user) return;
-        setSaving(true);
-
+        if (!exercise || !weight) return;
         const newEntry: PREntry = {
             id: crypto.randomUUID(),
             exercise_name: exercise,
@@ -78,32 +54,19 @@ export default function PRsPage() {
             reps: parseInt(reps),
             date,
         };
-
-        addOptimistic(newEntry);
+        save([newEntry, ...entries]);
         setOpen(false);
-
-        await supabase.from("personal_records").insert({
-            user_id: user.id,
-            exercise_name: exercise,
-            weight: parseFloat(weight),
-            reps: parseInt(reps),
-            date,
-        });
-
         setExercise("");
         setWeight("");
         setReps("1");
         setDate(new Date().toISOString().split("T")[0]);
-        setSaving(false);
-        fetchEntries();
     };
 
-    const handleDelete = async (id: string) => {
-        setEntries((prev) => prev.filter((e) => e.id !== id));
-        await supabase.from("personal_records").delete().eq("id", id);
+    const handleDelete = (id: string) => {
+        save(entries.filter((e) => e.id !== id));
     };
 
-    const filteredForChart = optimisticEntries
+    const filteredForChart = entries
         .filter((e) => e.exercise_name === filter)
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .map((e) => ({
@@ -111,36 +74,11 @@ export default function PRsPage() {
             weight: e.weight,
         }));
 
-    const bestPR = optimisticEntries
+    const bestPR = entries
         .filter((e) => e.exercise_name === filter)
         .sort((a, b) => b.weight - a.weight)[0];
 
-    const availableExercises = [...new Set(optimisticEntries.map((e) => e.exercise_name))];
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-[#030712] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-forge-orange" />
-            </div>
-        );
-    }
-
-    if (!user) {
-        return (
-            <div className="min-h-screen bg-[#030712] flex items-center justify-center px-4">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-                    <Trophy className="h-16 w-16 text-forge-orange mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-white mb-2">Track Your PRs</h2>
-                    <p className="text-slate-400 mb-6 max-w-sm">Sign in to start logging your personal records and see your strength gains over time.</p>
-                    <Link href="/auth/signin?redirect=/prs">
-                        <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0 shadow-lg shadow-forge-orange/25">
-                            <LogIn className="mr-2 h-4 w-4" />Sign In to Track
-                        </Button>
-                    </Link>
-                </motion.div>
-            </div>
-        );
-    }
+    const availableExercises = [...new Set(entries.map((e) => e.exercise_name))];
 
     return (
         <div className="min-h-screen bg-[#030712] px-4 py-8">
@@ -186,8 +124,8 @@ export default function PRsPage() {
                                         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="bg-slate-900/50 border-forge-border text-white" />
                                     </div>
                                 </div>
-                                <Button type="submit" disabled={!exercise || !weight || saving} className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0">
-                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save PR"}
+                                <Button type="submit" disabled={!exercise || !weight} className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0">
+                                    Save PR
                                 </Button>
                             </form>
                         </DialogContent>
@@ -239,7 +177,7 @@ export default function PRsPage() {
                         <CardTitle className="text-white text-lg">PR History</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {optimisticEntries.length > 0 ? (
+                        {entries.length > 0 ? (
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-forge-border">
@@ -251,7 +189,7 @@ export default function PRsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {optimisticEntries.map((e) => (
+                                    {entries.map((e) => (
                                         <TableRow key={e.id} className="border-forge-border hover:bg-white/2">
                                             <TableCell className="text-white font-medium">{e.exercise_name}</TableCell>
                                             <TableCell className="text-forge-orange font-bold">{e.weight} kg</TableCell>
