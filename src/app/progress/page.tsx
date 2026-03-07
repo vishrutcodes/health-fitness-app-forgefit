@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useOptimistic, useCallback } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, Plus, Trash2, Loader2 } from "lucide-react";
+import { TrendingUp, Plus, Trash2, Loader2, LogIn } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { createClient } from "@/lib/supabase-client";
 import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
 
 const metrics = ["Body Weight (kg)", "Waist Size (cm)", "Chest Size (cm)", "Arm Size (cm)", "Thigh Size (cm)", "Body Fat (%)"];
 
@@ -31,6 +32,7 @@ export default function ProgressPage() {
         (state, newEntry: ProgressEntry) => [newEntry, ...state]
     );
     const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<User | null>(null);
     const [open, setOpen] = useState(false);
     const [metric, setMetric] = useState("");
     const [value, setValue] = useState("");
@@ -42,11 +44,21 @@ export default function ProgressPage() {
     const supabase = createClient();
 
     const fetchEntries = useCallback(async () => {
-        const { data } = await supabase
-            .from("progress_records")
-            .select("*")
-            .order("date", { ascending: false });
-        if (data) setEntries(data.map((d) => ({ ...d, date: d.date })));
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            const { data, error } = await supabase
+                .from("progress_records")
+                .select("*")
+                .order("date", { ascending: false });
+            if (data && !error) setEntries(data.map((d) => ({ ...d, date: d.date })));
+        } catch {
+            // Table might not exist yet
+        }
         setLoading(false);
     }, [supabase]);
 
@@ -56,7 +68,7 @@ export default function ProgressPage() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!metric || !value) return;
+        if (!metric || !value || !user) return;
         setSaving(true);
 
         const newEntry: ProgressEntry = {
@@ -69,9 +81,6 @@ export default function ProgressPage() {
 
         addOptimistic(newEntry);
         setOpen(false);
-
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
 
         await supabase.from("progress_records").insert({
             user_id: user.id,
@@ -116,13 +125,30 @@ export default function ProgressPage() {
         );
     }
 
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-[#030712] flex items-center justify-center px-4">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+                    <TrendingUp className="h-16 w-16 text-forge-orange mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-white mb-2">Track Your Progress</h2>
+                    <p className="text-slate-400 mb-6 max-w-sm">Sign in to start logging your body measurements and see your transformation over time.</p>
+                    <Link href="/auth/signin?redirect=/progress">
+                        <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0 shadow-lg shadow-forge-orange/25">
+                            <LogIn className="mr-2 h-4 w-4" />Sign In to Track
+                        </Button>
+                    </Link>
+                </motion.div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#030712] px-4 py-8">
             <div className="mx-auto max-w-4xl">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-300 transition-colors mb-1 block">← Dashboard</Link>
+                        <Link href="/" className="text-sm text-slate-500 hover:text-slate-300 transition-colors mb-1 block">← Home</Link>
                         <h1 className="text-3xl font-bold text-white flex items-center gap-2"><TrendingUp className="h-7 w-7 text-forge-orange" />Body Progress</h1>
                         <p className="text-slate-400 mt-1">Track your body measurements over time</p>
                     </div>
