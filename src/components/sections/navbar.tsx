@@ -88,9 +88,6 @@ export function Navbar() {
 
                 {/* Desktop Actions */}
                 <div className="hidden items-center gap-3 md:flex">
-                    <a href="#" className="text-sm font-medium text-slate-300 transition-colors hover:text-white">
-                        Sign In
-                    </a>
                     <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0">
                         <Flame className="mr-2 h-4 w-4" />
                         AI Coach
@@ -124,7 +121,6 @@ export function Navbar() {
                         </a>
                     ))}
                     <div className="mt-3 flex flex-col gap-2 border-t border-white/5 pt-3">
-                        <a href="#" className="px-3 py-2 text-sm font-medium text-slate-300">Sign In</a>
                         <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold w-full">
                             <Flame className="mr-2 h-4 w-4" />
                             AI Coach
