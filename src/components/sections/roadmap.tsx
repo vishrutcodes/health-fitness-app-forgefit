@@ -129,7 +129,7 @@ export function RoadmapSection() {
 
                                     {/* Phases */}
                                     {roadmap.phases.map((phase, i) => (
-                                        <div key={i} className={`rounded-xl bg-gradient-to-r ${phaseColors[i % phaseColors.length]} border border-forge-border p-5`}>
+                                        <div key={i} className={`rounded-xl bg-linear-to-r ${phaseColors[i % phaseColors.length]} border border-forge-border p-5`}>
                                             <div className="flex items-center gap-3 mb-3">
                                                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900/50 ${phaseTextColors[i % phaseTextColors.length]}`}>
                                                     <Dumbbell className="h-5 w-5" />
