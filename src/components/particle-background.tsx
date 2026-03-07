@@ -19,7 +19,7 @@ export function ParticleBackground() {
     const options: ISourceOptions = useMemo(
         () => ({
             fullScreen: false,
-            fpsLimit: 60,
+            fpsLimit: 120,
             interactivity: {
                 events: {
                     onHover: {
@@ -29,8 +29,8 @@ export function ParticleBackground() {
                 },
                 modes: {
                     repulse: {
-                        distance: 120,
-                        duration: 0.4,
+                        distance: 200,
+                        duration: 0.6,
                     },
                 },
             },
@@ -40,14 +40,14 @@ export function ParticleBackground() {
                 },
                 links: {
                     color: "#ff6b2b",
-                    distance: 150,
+                    distance: 180,
                     enable: true,
-                    opacity: 0.08,
-                    width: 1,
+                    opacity: 0.2,
+                    width: 1.2,
                 },
                 move: {
                     enable: true,
-                    speed: 0.6,
+                    speed: 1.5,
                     direction: "none" as const,
                     random: true,
                     straight: false,
@@ -59,16 +59,16 @@ export function ParticleBackground() {
                     density: {
                         enable: true,
                     },
-                    value: 60,
+                    value: 150,
                 },
                 opacity: {
-                    value: { min: 0.05, max: 0.15 },
+                    value: { min: 0.1, max: 0.375 },
                 },
                 shape: {
                     type: "circle",
                 },
                 size: {
-                    value: { min: 1, max: 2.5 },
+                    value: { min: 1.5, max: 6.25 },
                 },
             },
             detectRetina: true,
