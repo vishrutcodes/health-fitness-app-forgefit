@@ -11,6 +11,7 @@ import { WorkoutTimer } from "@/components/sections/workout-timer";
 import { PhasePlanner } from "@/components/sections/phase-planner";
 import { KnowledgeBase } from "@/components/sections/knowledge-base";
 import { Footer } from "@/components/sections/footer";
+import { AiCoachDialog } from "@/components/ai-coach-dialog";
 
 export default function Home() {
   return (
@@ -30,6 +31,7 @@ export default function Home() {
         <KnowledgeBase />
       </main>
       <Footer />
+      <AiCoachDialog />
     </>
   );
 }
