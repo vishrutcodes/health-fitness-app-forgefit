@@ -265,18 +265,30 @@ Users type in any food items (e.g., "2 eggs, 1 cup rice, grilled chicken breast 
 
 ---
 
-### 3. 🏋️ Exercise Guide — AI Exercise Form Guidance
+### 3. 🏋️ Exercise Guide — AI Exercise Form Guidance + Voice Coach
 
 **Component:** `src/components/sections/exercise-guide.tsx`
 **API Route:** `POST /api/ai/exercise`
 
-A searchable exercise encyclopedia powered by AI. Users type any exercise name and receive:
+A searchable exercise encyclopedia powered by AI with **built-in voice guidance**. Users type any exercise name and receive:
 
 - **Target Muscles** — Primary and secondary muscle groups activated (e.g., "Primary: Quadriceps, Glutes; Secondary: Hamstrings, Core")
 - **Step-by-Step Form Instructions** — Detailed numbered steps for proper execution
 - **Common Mistakes** — Top 3-5 form errors to avoid with explanations
 - **Pro Tips** — Advanced cues for maximizing muscle engagement
 - **Variations** — Related exercises that are clickable — clicking a variation auto-searches for that exercise, creating a seamless exploration flow
+
+#### 🔊 Voice Guidance (Web Speech API)
+
+A standout feature — after the AI generates form tips, users can click the green **"Voice Guide"** button to have the instructions **read aloud step-by-step**, hands-free, like a personal trainer coaching you through the movement.
+
+- **Step-by-Step Narration** — Reads each form tip sequentially, then common mistakes, with an intro and closing line
+- **Real-Time Step Highlighting** — The currently spoken step glows orange with a pulsing 🔊 icon, so users can follow along visually
+- **Full Playback Controls** — Pause ⏸, Resume ▶, Skip ⏭, and Stop 🔇 buttons for complete control
+- **Smart Voice Selection** — Automatically picks the best available English voice (prefers Google/Samantha/Daniel voices)
+- **Auto-Stop on Navigation** — Speech cancels when switching to a new exercise
+
+**Technical Implementation:** Uses the browser's native `SpeechSynthesis` API — zero external dependencies, works offline, no API calls needed. The speech queue is managed via `useRef` to track the current step index, and `onend` callbacks chain each step sequentially. Active step index is calculated relative to the speech queue position to highlight the correct form tip or mistake in the UI.
 
 **Technical Detail:** The AI is instructed to return JSON with fields: `{ muscles, steps[], mistakes[], tips[], variations[] }`. Variations are rendered as clickable badges that trigger a new search.
 
