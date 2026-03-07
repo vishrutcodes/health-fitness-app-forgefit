@@ -40,11 +40,10 @@ export default function SignUpPage() {
         } else {
             setSuccess(true);
             setLoading(false);
-            // Auto-sign in after signup
+            // Auto-sign in after signup and reload to home
             const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
             if (!signInError) {
-                router.push("/dashboard");
-                router.refresh();
+                window.location.href = "/";
             }
         }
     };

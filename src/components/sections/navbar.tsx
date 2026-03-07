@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, ChevronDown, Menu, X, LogIn, LayoutDashboard, Trophy, TrendingUp } from "lucide-react";
+import { Flame, ChevronDown, Menu, X, LogIn, LogOut, TrendingUp, Trophy, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase-client";
 import Link from "next/link";
-import type { User } from "@supabase/supabase-js";
+import type { User as SupaUser } from "@supabase/supabase-js";
 
 const navLinks = [
     { label: "Home", href: "#home" },
@@ -28,9 +28,14 @@ const moreLinks = [
 export function Navbar() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
-    const [user, setUser] = useState<User | null>(null);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [user, setUser] = useState<SupaUser | null>(null);
     const [showFlash, setShowFlash] = useState(false);
     const [flashName, setFlashName] = useState("");
+    const profileRef = useRef<HTMLDivElement>(null);
+
+    const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+    const userInitials = userName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
 
     useEffect(() => {
         const supabase = createClient();
@@ -40,7 +45,6 @@ export function Navbar() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             const newUser = session?.user ?? null;
             setUser(newUser);
-            // Flash welcome toast on sign-in
             if (event === "SIGNED_IN" && newUser) {
                 const name = newUser.user_metadata?.full_name || newUser.email?.split("@")[0] || "Athlete";
                 setFlashName(name);
@@ -50,6 +54,24 @@ export function Navbar() {
         });
         return () => subscription.unsubscribe();
     }, []);
+
+    // Close profile dropdown when clicking outside
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+                setProfileOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, []);
+
+    const handleSignOut = async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        setProfileOpen(false);
+        window.location.href = "/";
+    };
 
     return (
         <>
@@ -61,7 +83,7 @@ export function Navbar() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -60, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 rounded-2xl bg-linear-to-r from-forge-orange to-forge-orange-light px-6 py-3 shadow-2xl shadow-forge-orange/30"
+                        className="fixed top-20 left-1/2 -translate-x-1/2 z-100 flex items-center gap-3 rounded-2xl bg-linear-to-r from-forge-orange to-forge-orange-light px-6 py-3 shadow-2xl shadow-forge-orange/30"
                     >
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
                             <Flame className="h-5 w-5 text-white" />
@@ -136,12 +158,45 @@ export function Navbar() {
                     {/* Desktop Actions */}
                     <div className="hidden items-center gap-3 md:flex">
                         {user ? (
-                            <Link href="/dashboard">
-                                <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0">
-                                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                                    Dashboard
-                                </Button>
-                            </Link>
+                            <div className="relative" ref={profileRef}>
+                                <button
+                                    onClick={() => setProfileOpen(!profileOpen)}
+                                    className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm font-medium text-white transition-all hover:bg-white/10 hover:border-forge-orange/30"
+                                >
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-linear-to-br from-forge-orange to-forge-orange-light text-xs font-bold text-white">
+                                        {userInitials}
+                                    </div>
+                                    <span className="max-w-[120px] truncate">{userName}</span>
+                                    <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+                                </button>
+                                {profileOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        className="absolute right-0 top-full mt-2 w-52 rounded-xl glass-card p-2 shadow-xl border border-white/10"
+                                    >
+                                        {/* User info header */}
+                                        <div className="px-3 py-2 mb-1 border-b border-white/5">
+                                            <p className="text-sm font-semibold text-white truncate">{userName}</p>
+                                            <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                                        </div>
+                                        <Link href="/progress" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white">
+                                            <TrendingUp className="h-4 w-4 text-emerald-400" />Progress
+                                        </Link>
+                                        <Link href="/prs" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white">
+                                            <Trophy className="h-4 w-4 text-forge-orange" />Personal Records
+                                        </Link>
+                                        <Link href="/dashboard" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white">
+                                            <User className="h-4 w-4 text-blue-400" />Dashboard
+                                        </Link>
+                                        <div className="border-t border-white/5 mt-1 pt-1">
+                                            <button onClick={handleSignOut} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300">
+                                                <LogOut className="h-4 w-4" />Log Out
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </div>
                         ) : (
                             <Link href="/auth/signin">
                                 <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0">
@@ -178,14 +233,25 @@ export function Navbar() {
                                 {link.label}
                             </a>
                         ))}
-                        <div className="mt-3 flex flex-col gap-2 border-t border-white/5 pt-3">
+                        <div className="mt-3 flex flex-col gap-1 border-t border-white/5 pt-3">
                             {user ? (
-                                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                                    <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold w-full">
-                                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                                        Dashboard
-                                    </Button>
-                                </Link>
+                                <>
+                                    <div className="flex items-center gap-2 px-3 py-2 mb-1">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-forge-orange to-forge-orange-light text-xs font-bold text-white">
+                                            {userInitials}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">{userName}</p>
+                                            <p className="text-xs text-slate-400">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">
+                                        <User className="h-4 w-4 text-blue-400" />Dashboard
+                                    </Link>
+                                    <button onClick={() => { setMobileOpen(false); handleSignOut(); }} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-red-500/10">
+                                        <LogOut className="h-4 w-4" />Log Out
+                                    </button>
+                                </>
                             ) : (
                                 <Link href="/auth/signin" onClick={() => setMobileOpen(false)}>
                                     <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold w-full">
