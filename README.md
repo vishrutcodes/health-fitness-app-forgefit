@@ -736,8 +736,9 @@ forgefit/
 
 ## 🔮 Future Enhancements
 
+- [ ] **Supabase Authentication** — Implement email/password and OAuth (Google, GitHub) sign-in using Supabase Auth with Row Level Security (RLS). Users will be able to create accounts, log in, and have their sessions managed securely via Supabase's JWT-based auth system with middleware-protected routes.
+- [ ] **Cloud Data Storage (Supabase PostgreSQL)** — Migrate Progress and PR data from localStorage to Supabase's PostgreSQL database. This will enable cross-device syncing, data persistence beyond the browser, and multi-user support. Schema will include `user_profiles`, `personal_records`, and `progress_logs` tables with RLS policies ensuring users can only access their own data.
 - [ ] **Progressive Web App (PWA)** — Offline support with service worker caching
-- [ ] **Social Auth** — Google/GitHub OAuth for cloud-synced data
 - [ ] **Workout Library** — Pre-built workout programs (PPL, PHUL, Starting Strength)
 - [ ] **Dark/Light Theme Toggle** — System-preference-aware theme switching
 - [ ] **Export Data** — CSV/PDF export for progress reports and PR history
