@@ -11,6 +11,7 @@ const navLinks = [
     { label: "Toolkit", href: "#toolkit" },
     { label: "Diet Plan", href: "#diet" },
     { label: "Roadmap", href: "#roadmap" },
+    { label: "PRs & Progress", href: "/progress" },
 ];
 
 const moreLinks = [
