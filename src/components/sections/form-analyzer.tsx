@@ -25,61 +25,265 @@ function angle(a: PoseLandmark, b: PoseLandmark, c: PoseLandmark): number {
     return Math.round(deg);
 }
 
-/* ---------- Exercise detection from joint angles ---------- */
-function detectExercise(landmarks: PoseLandmark[]): string {
-    const leftKnee = angle(landmarks[23], landmarks[25], landmarks[27]);
-    const rightKnee = angle(landmarks[24], landmarks[26], landmarks[28]);
-    const leftElbow = angle(landmarks[11], landmarks[13], landmarks[15]);
-    const rightElbow = angle(landmarks[12], landmarks[14], landmarks[16]);
-    const leftHip = angle(landmarks[11], landmarks[23], landmarks[25]);
-    const rightHip = angle(landmarks[12], landmarks[24], landmarks[26]);
-    const leftShoulder = angle(landmarks[13], landmarks[11], landmarks[23]);
-    const rightShoulder = angle(landmarks[14], landmarks[12], landmarks[24]);
+/* ---------- Helper: torso angle from vertical ---------- */
+function torsoAngleFromVertical(landmarks: PoseLandmark[]): number {
+    const shoulderMid = { x: (landmarks[11].x + landmarks[12].x) / 2, y: (landmarks[11].y + landmarks[12].y) / 2 };
+    const hipMid = { x: (landmarks[23].x + landmarks[24].x) / 2, y: (landmarks[23].y + landmarks[24].y) / 2 };
+    // Angle of torso line from vertical (0° = upright, 90° = horizontal)
+    const dx = shoulderMid.x - hipMid.x;
+    const dy = shoulderMid.y - hipMid.y; // negative = shoulder above hip
+    return Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+}
 
-    const avgKnee = (leftKnee + rightKnee) / 2;
-    const avgElbow = (leftElbow + rightElbow) / 2;
-    const avgHip = (leftHip + rightHip) / 2;
-    const avgShoulder = (leftShoulder + rightShoulder) / 2;
+/* ---------- Helper: stance width (normalized) ---------- */
+function stanceWidth(landmarks: PoseLandmark[]): number {
+    return Math.abs(landmarks[27].x - landmarks[28].x); // ankle-to-ankle
+}
 
-    // Torso lean: how far forward shoulders are relative to hips
-    // In MediaPipe normalized coords, Y increases downward
-    const shoulderMidY = (landmarks[11].y + landmarks[12].y) / 2;
-    const hipMidY = (landmarks[23].y + landmarks[24].y) / 2;
-    const shoulderMidX = (landmarks[11].x + landmarks[12].x) / 2;
-    const hipMidX = (landmarks[23].x + landmarks[24].x) / 2;
-    // Forward lean: how far shoulders are in front of (or above) hips
-    const torsoLean = Math.abs(shoulderMidX - hipMidX) + Math.max(0, hipMidY - shoulderMidY) * 0.5;
-    const isForwardLean = shoulderMidY > hipMidY - 0.05; // shoulders close to or below hips = leaning forward
+/* ---------- Helper: hand height relative to shoulder ---------- */
+function handHeightRelShoulder(landmarks: PoseLandmark[]): number {
+    const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+    const handY = (landmarks[15].y + landmarks[16].y) / 2;
+    return shoulderY - handY; // positive = hands above shoulders
+}
 
-    // Lunge: one knee deep, the other extended — strong asymmetry
-    if ((leftKnee < 110 || rightKnee < 110) && Math.abs(leftKnee - rightKnee) > 30) return "Lunge";
+/* ---------- Helper: is body horizontal (e.g. bench, push-up) ---------- */
+function isBodyHorizontal(landmarks: PoseLandmark[]): boolean {
+    const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+    const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+    const ankleY = (landmarks[27].y + landmarks[28].y) / 2;
+    // If shoulder, hip, ankle are all at similar Y = horizontal
+    return Math.abs(shoulderY - hipY) < 0.1 && Math.abs(hipY - ankleY) < 0.15;
+}
 
-    // DEADLIFT vs SQUAT: both have hip flexion + knee bend
-    // Key difference: deadlift has FORWARD LEAN (shoulders ahead/near hips), squat stays UPRIGHT
-    if (avgHip < 140 && avgKnee < 160) {
-        // If shoulders are close to or below hip level = forward lean = deadlift
-        if (isForwardLean && avgHip < avgKnee) return "Deadlift";
-        // If hip angle is much tighter than knee = hip hinge = deadlift
-        if (avgHip < avgKnee - 20) return "Deadlift";
-        // Otherwise upright torso with deep knee bend = squat
-        if (avgKnee < 130) return "Squat";
+/* ---------- Multi-signal confidence scoring for each exercise ---------- */
+interface ExerciseScore { name: string; confidence: number }
+
+function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
+    const lk = angle(landmarks[23], landmarks[25], landmarks[27]);
+    const rk = angle(landmarks[24], landmarks[26], landmarks[28]);
+    const le = angle(landmarks[11], landmarks[13], landmarks[15]);
+    const re = angle(landmarks[12], landmarks[14], landmarks[16]);
+    const lh = angle(landmarks[11], landmarks[23], landmarks[25]);
+    const rh = angle(landmarks[12], landmarks[24], landmarks[26]);
+    const ls = angle(landmarks[13], landmarks[11], landmarks[23]);
+    const rs = angle(landmarks[14], landmarks[12], landmarks[24]);
+
+    const avgKnee = (lk + rk) / 2;
+    const avgElbow = (le + re) / 2;
+    const avgHip = (lh + rh) / 2;
+    const avgShoulder = (ls + rs) / 2;
+    const kneeAsymmetry = Math.abs(lk - rk);
+    const torsoAngle = torsoAngleFromVertical(landmarks);
+    const stance = stanceWidth(landmarks);
+    const handsAboveShoulder = handHeightRelShoulder(landmarks);
+    const horizontal = isBodyHorizontal(landmarks);
+    const hipKneeRatio = avgHip / avgKnee; // < 1 = more hip bend than knee
+
+    const scores: ExerciseScore[] = [];
+
+    // ===================== SQUAT =====================
+    // Upright torso + deep knee bend + equal hip/knee flexion
+    {
+        let c = 0;
+        if (avgKnee < 130) c += 25;   // knees bent
+        if (avgKnee < 100) c += 15;   // deep squat bonus
+        if (torsoAngle < 35) c += 20; // upright torso (key differentiator from deadlift)
+        if (hipKneeRatio > 0.7 && hipKneeRatio < 1.15) c += 15; // hip and knee bend together
+        if (avgHip < 130) c += 10;    // hips flexed
+        if (kneeAsymmetry < 15) c += 10; // symmetric = squat, not lunge
+        if (avgElbow > 100) c += 5;   // arms not curling
+        scores.push({ name: "Squat", confidence: c });
     }
 
-    // Pure hip hinge with straighter knees = deadlift
-    if (avgHip < 130 && avgKnee > 140) return "Deadlift";
+    // ===================== DEADLIFT (Conventional) =====================
+    // Forward lean + hip hinge dominant + knees moderately bent
+    {
+        let c = 0;
+        if (torsoAngle > 30) c += 25;   // forward lean (KEY)
+        if (torsoAngle > 50) c += 10;   // deep lean bonus
+        if (avgHip < 130) c += 15;      // hips flexed
+        if (hipKneeRatio < 0.9) c += 20; // hip angle < knee angle (hip hinge)
+        if (avgKnee > 100 && avgKnee < 170) c += 10; // some knee bend but not squat-deep
+        if (kneeAsymmetry < 15) c += 5;  // symmetric
+        if (avgElbow > 140) c += 10;    // arms straight (holding bar)
+        if (handsAboveShoulder < -0.05) c += 5; // hands below shoulders
+        scores.push({ name: "Deadlift", confidence: c });
+    }
 
-    // Overhead Press: arms overhead, elbows extending
-    if (avgShoulder > 150 && avgElbow > 140) return "Overhead Press";
-    // Bench Press / Push-Up: elbows bent at sides
-    if (avgElbow < 120 && avgShoulder < 90) return "Bench Press";
-    // Bicep Curl: tight elbow angle, arms by sides
-    if (avgElbow < 80 && avgShoulder < 40) return "Bicep Curl";
-    // Row: bent over, elbows bending
-    if (avgHip < 130 && avgElbow < 120 && avgShoulder > 40) return "Barbell Row";
-    // Standing: upright
-    if (avgKnee > 160 && avgHip > 160) return "Standing Position";
+    // ===================== ROMANIAN DEADLIFT =====================
+    // Very straight knees + deep hip hinge + forward lean
+    {
+        let c = 0;
+        if (avgKnee > 145) c += 25;     // nearly straight knees (KEY vs conventional DL)
+        if (torsoAngle > 40) c += 20;   // forward lean
+        if (avgHip < 120) c += 20;      // deep hip hinge
+        if (hipKneeRatio < 0.75) c += 15; // hip much more bent than knee
+        if (avgElbow > 150) c += 10;    // arms hanging straight
+        if (kneeAsymmetry < 10) c += 5;
+        scores.push({ name: "Romanian Deadlift", confidence: c });
+    }
 
-    return "Unknown Exercise";
+    // ===================== BARBELL ROW =====================
+    // Forward lean + elbows bending + hands pulling up
+    {
+        let c = 0;
+        if (torsoAngle > 35) c += 20;   // bent over (like deadlift)
+        if (avgElbow < 120) c += 25;    // elbows bent (KEY diff from deadlift)
+        if (avgElbow < 90) c += 10;     // deep pull bonus
+        if (avgHip < 140) c += 10;      // hips flexed
+        if (avgShoulder > 30 && avgShoulder < 100) c += 15; // arms pulling back
+        if (avgKnee > 130) c += 10;     // knees relatively straight
+        scores.push({ name: "Barbell Row", confidence: c });
+    }
+
+    // ===================== OVERHEAD PRESS =====================
+    // Hands above head + elbows extending + upright torso
+    {
+        let c = 0;
+        if (handsAboveShoulder > 0.05) c += 30; // hands above shoulders (KEY)
+        if (avgShoulder > 140) c += 20;   // arms raised high
+        if (avgElbow > 130) c += 15;      // elbows extending/locked
+        if (torsoAngle < 20) c += 10;     // upright
+        if (avgKnee > 150) c += 5;        // standing
+        if (kneeAsymmetry < 10) c += 5;
+        scores.push({ name: "Overhead Press", confidence: c });
+    }
+
+    // ===================== LATERAL RAISE =====================
+    // Arms out to sides + elbows slightly bent + upright + hands at/near shoulder height
+    {
+        let c = 0;
+        if (avgShoulder > 60 && avgShoulder < 140) c += 25; // arms abducted but not overhead
+        if (avgElbow > 140) c += 15;    // relatively straight arms
+        if (torsoAngle < 15) c += 15;   // very upright (KEY — not pressing)
+        if (handsAboveShoulder > -0.1 && handsAboveShoulder < 0.1) c += 20; // hands near shoulder height
+        if (avgKnee > 155) c += 5;      // standing straight
+        if (avgHip > 160) c += 5;       // no hip bend
+        scores.push({ name: "Lateral Raise", confidence: c });
+    }
+
+    // ===================== BENCH PRESS =====================
+    // Horizontal body + elbows bent + arms at chest level
+    {
+        let c = 0;
+        if (horizontal) c += 35;        // lying down (KEY)
+        if (avgElbow < 120) c += 20;    // elbows bent
+        if (avgElbow < 90) c += 10;     // deep press
+        if (avgShoulder < 100) c += 10;
+        if (!horizontal && avgElbow < 110 && avgShoulder < 80) c += 15; // fallback for side-view
+        scores.push({ name: "Bench Press", confidence: c });
+    }
+
+    // ===================== PUSH-UP =====================
+    // Horizontal body + elbows bent + body straight plank
+    {
+        let c = 0;
+        if (horizontal) c += 25;
+        if (avgElbow < 120) c += 15;
+        // Push-up: face down, arms under shoulders
+        const noseY = landmarks[0].y;
+        const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+        if (Math.abs(noseY - hipY) < 0.15) c += 15; // body in plank
+        if (avgKnee > 150) c += 10;    // legs straight
+        if (handsAboveShoulder < 0) c += 10;
+        scores.push({ name: "Push-Up", confidence: c });
+    }
+
+    // ===================== BICEP CURL =====================
+    // Arms by sides + tight elbow flexion + upright + upper arm stationary
+    {
+        let c = 0;
+        if (avgElbow < 80) c += 30;     // tight elbow bend (KEY)
+        if (avgShoulder < 35) c += 25;  // arms pinned to sides (KEY diff from shoulder exercises)
+        if (torsoAngle < 15) c += 10;   // upright
+        if (avgKnee > 155) c += 5;      // standing
+        if (avgHip > 160) c += 5;       // no hip bend
+        if (handsAboveShoulder < 0) c += 5; // hands below shoulders
+        scores.push({ name: "Bicep Curl", confidence: c });
+    }
+
+    // ===================== TRICEP PUSHDOWN =====================
+    // Arms by sides + elbows extending (opposite of curl) + upright
+    {
+        let c = 0;
+        if (avgElbow > 120 && avgElbow < 175) c += 15;
+        if (avgShoulder < 30) c += 25;  // arms by sides
+        if (torsoAngle < 15) c += 10;
+        if (handsAboveShoulder < -0.15) c += 20; // hands well below shoulders (pushing DOWN)
+        if (avgKnee > 155) c += 5;
+        scores.push({ name: "Tricep Extension", confidence: c });
+    }
+
+    // ===================== LUNGE =====================
+    // One knee deep, other extended + large knee asymmetry
+    {
+        let c = 0;
+        if (kneeAsymmetry > 25) c += 35; // one knee bent, other straighter (KEY)
+        if (Math.min(lk, rk) < 110) c += 20; // front knee deep
+        if (torsoAngle < 25) c += 10;   // upright torso
+        if (avgHip < 140) c += 5;
+        if (stance > 0.15) c += 10;     // wide split stance
+        scores.push({ name: "Lunge", confidence: c });
+    }
+
+    // ===================== BULGARIAN SPLIT SQUAT =====================
+    // Like lunge but rear foot elevated — extreme knee asymmetry
+    {
+        let c = 0;
+        if (kneeAsymmetry > 40) c += 30; // even more asymmetric than lunge
+        if (Math.min(lk, rk) < 100) c += 15;
+        const rearAnkleY = Math.min(landmarks[27].y, landmarks[28].y);
+        const frontAnkleY = Math.max(landmarks[27].y, landmarks[28].y);
+        if (frontAnkleY - rearAnkleY > 0.05) c += 20; // rear foot higher
+        if (torsoAngle < 20) c += 10;
+        scores.push({ name: "Bulgarian Split Squat", confidence: c });
+    }
+
+    // ===================== HIP THRUST =====================
+    // Hips high, shoulders on bench (back on surface), knees bent 90°
+    {
+        let c = 0;
+        const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+        const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+        if (hipY < shoulderY) c += 25;  // hips higher than shoulders
+        if (avgKnee > 70 && avgKnee < 110) c += 20; // ~90° knee bend
+        if (avgHip > 140) c += 15;      // hips extended/thrusting up
+        scores.push({ name: "Hip Thrust", confidence: c });
+    }
+
+    // ===================== FRONT SQUAT =====================
+    // Like squat but arms in front (elbows high, hands near shoulders)
+    {
+        let c = 0;
+        if (avgKnee < 130) c += 20;
+        if (torsoAngle < 25) c += 15;   // very upright (more than back squat)
+        if (avgElbow < 100) c += 15;    // elbows bent holding bar in front
+        if (avgShoulder > 70 && avgShoulder < 130) c += 15; // arms forward/up
+        if (handsAboveShoulder > -0.05 && handsAboveShoulder < 0.1) c += 10; // hands near shoulder height
+        if (avgHip < 130) c += 5;
+        scores.push({ name: "Front Squat", confidence: c });
+    }
+
+    // ===================== STANDING (idle) =====================
+    {
+        let c = 0;
+        if (avgKnee > 160) c += 30;
+        if (avgHip > 160) c += 30;
+        if (torsoAngle < 10) c += 15;
+        if (avgShoulder < 30) c += 10;
+        scores.push({ name: "Standing Position", confidence: c });
+    }
+
+    return scores.sort((a, b) => b.confidence - a.confidence);
+}
+
+/* ---------- Exercise detection — picks highest confidence ---------- */
+function detectExercise(landmarks: PoseLandmark[]): string {
+    const scores = scoreAllExercises(landmarks);
+    // Require minimum confidence threshold
+    if (scores[0].confidence < 30) return "Unknown Exercise";
+    return scores[0].name;
 }
 
 /* ---------- Form analysis per exercise ---------- */
@@ -88,116 +292,164 @@ function analyzeForm(landmarks: PoseLandmark[], exercise: string): AnalysisResul
     const positives: string[] = [];
     let score = 10;
 
-    const leftKnee = angle(landmarks[23], landmarks[25], landmarks[27]);
-    const rightKnee = angle(landmarks[24], landmarks[26], landmarks[28]);
-    const leftElbow = angle(landmarks[11], landmarks[13], landmarks[15]);
-    const rightElbow = angle(landmarks[12], landmarks[14], landmarks[16]);
-    const leftHip = angle(landmarks[11], landmarks[23], landmarks[25]);
-    const rightHip = angle(landmarks[12], landmarks[24], landmarks[26]);
-    const leftShoulder = angle(landmarks[13], landmarks[11], landmarks[23]);
-    const rightShoulder = angle(landmarks[14], landmarks[12], landmarks[24]);
+    const lk = angle(landmarks[23], landmarks[25], landmarks[27]);
+    const rk = angle(landmarks[24], landmarks[26], landmarks[28]);
+    const le = angle(landmarks[11], landmarks[13], landmarks[15]);
+    const re = angle(landmarks[12], landmarks[14], landmarks[16]);
+    const lh = angle(landmarks[11], landmarks[23], landmarks[25]);
+    const rh = angle(landmarks[12], landmarks[24], landmarks[26]);
+    const ls = angle(landmarks[13], landmarks[11], landmarks[23]);
+    const rs = angle(landmarks[14], landmarks[12], landmarks[24]);
 
-    const kneeSymmetry = Math.abs(leftKnee - rightKnee);
-    const elbowSymmetry = Math.abs(leftElbow - rightElbow);
-    const hipSymmetry = Math.abs(leftHip - rightHip);
+    const avgKnee = (lk + rk) / 2;
+    const avgElbow = (le + re) / 2;
+    const avgHip = (lh + rh) / 2;
+    const kneeAsym = Math.abs(lk - rk);
+    const elbowAsym = Math.abs(le - re);
+    const hipAsym = Math.abs(lh - rh);
+    const torsoAng = torsoAngleFromVertical(landmarks);
 
     const jointAngles: Record<string, number> = {
-        "Left Knee": leftKnee, "Right Knee": rightKnee,
-        "Left Elbow": leftElbow, "Right Elbow": rightElbow,
-        "Left Hip": leftHip, "Right Hip": rightHip,
-        "Left Shoulder": leftShoulder, "Right Shoulder": rightShoulder,
+        "Left Knee": lk, "Right Knee": rk,
+        "Left Elbow": le, "Right Elbow": re,
+        "Left Hip": lh, "Right Hip": rh,
+        "Left Shoulder": ls, "Right Shoulder": rs,
+        "Torso Angle": Math.round(torsoAng),
     };
 
-    // General symmetry checks
-    if (kneeSymmetry > 15) { corrections.push("⚠️ Knee asymmetry detected — one knee is bending more than the other. Focus on even weight distribution."); score -= 1; }
-    else { positives.push("✅ Good knee symmetry — both knees are working evenly."); }
+    // ---- Universal symmetry checks ----
+    if (!["Lunge", "Bulgarian Split Squat"].includes(exercise)) {
+        if (kneeAsym > 15) { corrections.push("⚠️ Knee asymmetry — one knee is bending more. Focus on even weight distribution."); score -= 1; }
+        else { positives.push("✅ Good bilateral knee symmetry."); }
+    }
+    if (hipAsym > 15 && !["Lunge", "Bulgarian Split Squat"].includes(exercise)) {
+        corrections.push("⚠️ Hip shift detected — hips not level. Strengthen weaker side."); score -= 1;
+    } else if (!["Lunge", "Bulgarian Split Squat"].includes(exercise)) {
+        positives.push("✅ Hips are level and balanced.");
+    }
 
-    if (hipSymmetry > 15) { corrections.push("⚠️ Hip shift detected — your hips are not level. Strengthen your weaker side with unilateral exercises."); score -= 1; }
-    else { positives.push("✅ Hips are level and balanced."); }
+    // ---- Exercise-specific form checks ----
+    if (exercise === "Squat" || exercise === "Front Squat") {
+        if (avgKnee > 100) { corrections.push("🦵 Squat depth is shallow — aim for thighs parallel (knee ~90°). Go lower for full glute/quad activation."); score -= 2; }
+        else { positives.push("✅ Great squat depth — at or below parallel."); }
 
-    // Exercise-specific checks
-    if (exercise === "Squat") {
-        const avgKnee = (leftKnee + rightKnee) / 2;
-        if (avgKnee > 100) { corrections.push("🦵 Squat depth is shallow — aim for thighs parallel to the ground (knee angle below 90°). Go lower for maximum quad and glute activation."); score -= 2; }
-        else { positives.push("✅ Great squat depth — thighs at or below parallel."); }
+        const lkX = landmarks[25].x, laX = landmarks[27].x;
+        const rkX = landmarks[26].x, raX = landmarks[28].x;
+        if (lkX < laX - 0.03 || rkX > raX + 0.03) { corrections.push("🚨 Knees caving inward — push knees out over toes. Protects ACL and activates glutes."); score -= 2; }
+        else { positives.push("✅ Knees tracking well over toes."); }
 
-        // Check knees caving
-        const leftKneeX = landmarks[25].x;
-        const leftAnkleX = landmarks[27].x;
-        const rightKneeX = landmarks[26].x;
-        const rightAnkleX = landmarks[28].x;
-        if (leftKneeX < leftAnkleX - 0.03 || rightKneeX > rightAnkleX + 0.03) {
-            corrections.push("🚨 Knees caving inward (valgus) — push knees out over your toes. This protects your ACL and activates glutes."); score -= 2;
-        } else { positives.push("✅ Knees tracking well over toes."); }
-
-        // Torso lean
-        const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
-        const hipY = (landmarks[23].y + landmarks[24].y) / 2;
-        if (shoulderY > hipY + 0.15) { corrections.push("🔙 Excessive forward lean — engage your core and keep chest up. Consider front squats to build torso strength."); score -= 1; }
+        if (torsoAng > 40) { corrections.push("🔙 Excessive forward lean — keep chest up and core braced. Consider front squats for torso strength."); score -= 1; }
         else { positives.push("✅ Good upright torso position."); }
+
+        if (exercise === "Front Squat" && torsoAng > 25) { corrections.push("📐 Front squat requires a very upright torso — elbows high, chest proud."); score -= 1; }
     }
 
     if (exercise === "Deadlift") {
-        const avgHip = (leftHip + rightHip) / 2;
-        // Back rounding check (shoulder position relative to hip)
-        const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
-        const hipPosY = (landmarks[23].y + landmarks[24].y) / 2;
-        if (shoulderY > hipPosY + 0.2) {
-            corrections.push("🔴 Upper back rounding detected — keep chest proud and lats engaged. Think 'bend the bar around your shins.'"); score -= 2;
-        } else { positives.push("✅ Good back position — spine looks neutral."); }
+        if (torsoAng > 70) { corrections.push("🔴 Back nearly horizontal — risk of rounding. Keep chest proud and lats engaged."); score -= 2; }
+        else { positives.push("✅ Good back position — spine looks neutral."); }
 
-        if (avgHip < 80) { corrections.push("💡 Hips are very low — this looks more like a squat. In a deadlift, hips should be higher than knees."); score -= 1; }
-        else { positives.push("✅ Good hip hinge positioning."); }
+        if (avgHip < 80) { corrections.push("💡 Hips too low — deadlift hips should be higher than knees. You're squatting the weight."); score -= 1; }
+        else { positives.push("✅ Good hip hinge — hips positioned correctly."); }
 
-        // Lockout check
-        if (avgHip > 170) { positives.push("✅ Full hip extension at lockout — great finish."); }
+        if (avgElbow < 150) { corrections.push("💪 Arms should be straight — don't bicep curl the deadlift. Relax your arms and let them hang."); score -= 1; }
+        else { positives.push("✅ Arms straight — good lockout position."); }
+
+        if (avgHip > 170) { positives.push("✅ Full hip extension at lockout — excellent finish."); }
     }
 
-    if (exercise === "Bench Press") {
-        const avgElbow = (leftElbow + rightElbow) / 2;
-        if (elbowSymmetry > 20) { corrections.push("⚠️ Uneven elbow angles — one arm is pressing more than the other. Use dumbbells to fix imbalances."); score -= 1; }
-        if (avgElbow < 70) { positives.push("✅ Good range of motion — elbows reaching full depth."); }
-        else { corrections.push("📐 Limited range of motion — lower the bar closer to your chest for full pec activation."); score -= 1; }
+    if (exercise === "Romanian Deadlift") {
+        if (avgKnee < 140) { corrections.push("🦵 Knees bending too much — RDLs require nearly straight legs. Slight bend only to protect joints."); score -= 2; }
+        else { positives.push("✅ Good knee position — legs nearly straight as required."); }
 
-        // Elbow flare
-        if (leftShoulder > 90 || rightShoulder > 90) {
-            corrections.push("🚨 Elbows flaring too wide — tuck elbows to ~45° to protect shoulders. Think 'arrow shape' not 'T shape.'"); score -= 2;
-        } else { positives.push("✅ Good elbow tuck — shoulders in a safe position."); }
-    }
+        if (torsoAng < 30) { corrections.push("📐 Not hinging enough — push your hips back further. Feel the stretch in your hamstrings."); score -= 1; }
+        else { positives.push("✅ Good hip hinge depth."); }
 
-    if (exercise === "Overhead Press") {
-        if (leftShoulder < 160 || rightShoulder < 160) {
-            corrections.push("⬆️ Arms not fully locked out overhead — press until elbows are fully extended and bar is directly over mid-foot."); score -= 1;
-        } else { positives.push("✅ Full lockout achieved — great overhead position."); }
-
-        if (elbowSymmetry > 15) { corrections.push("⚠️ Uneven press — one arm is higher than the other. Focus on pressing evenly."); score -= 1; }
-    }
-
-    if (exercise === "Bicep Curl") {
-        // Upper arm should stay stationary
-        if (leftShoulder > 30 || rightShoulder > 30) {
-            corrections.push("💪 Upper arms moving — keep elbows pinned at your sides. Swinging reduces bicep activation and uses momentum."); score -= 2;
-        } else { positives.push("✅ Elbows staying stationary — good isolation."); }
-
-        const avgElbow = (leftElbow + rightElbow) / 2;
-        if (avgElbow < 40) { positives.push("✅ Full contraction at the top — great squeeze."); }
+        if (avgElbow < 150) { corrections.push("💪 Keep arms straight and relaxed — let the weight hang."); score -= 1; }
+        else { positives.push("✅ Arms hanging straight — correct position."); }
     }
 
     if (exercise === "Barbell Row") {
-        const avgHip = (leftHip + rightHip) / 2;
-        if (avgHip > 150) { corrections.push("🔙 Not bent over enough — hinge at the hips more. Torso should be at roughly 45° for proper lat engagement."); score -= 1; }
+        if (torsoAng < 30) { corrections.push("🔙 Not bent over enough — hinge more at the hips. Torso should be near 45° for proper lat engagement."); score -= 1; }
         else { positives.push("✅ Good torso angle for rowing."); }
 
-        if (elbowSymmetry > 20) { corrections.push("⚠️ Pulling unevenly — one arm is doing more work. Focus on squeezing both shoulder blades equally."); score -= 1; }
+        if (avgElbow > 130) { corrections.push("📐 Not pulling hard enough — elbows should pull past your torso. Squeeze shoulder blades together."); score -= 1; }
+        else { positives.push("✅ Good elbow pull — full range of motion."); }
+
+        if (elbowAsym > 20) { corrections.push("⚠️ Pulling unevenly — one arm doing more work. Squeeze both shoulder blades equally."); score -= 1; }
     }
 
-    if (exercise === "Lunge") {
-        const frontKnee = Math.min(leftKnee, rightKnee);
-        if (frontKnee > 100) { corrections.push("🦵 Front knee not bending enough — aim for 90° angle. Your thigh should be parallel to the ground."); score -= 1; }
-        else { positives.push("✅ Good depth on the front leg."); }
+    if (exercise === "Overhead Press") {
+        if (ls < 160 || rs < 160) { corrections.push("⬆️ Arms not fully locked out overhead — press until bar is directly over mid-foot."); score -= 1; }
+        else { positives.push("✅ Full lockout — great overhead position."); }
 
-        // Knee over toe check
-        positives.push("✅ Upright torso maintained during lunge.");
+        if (elbowAsym > 15) { corrections.push("⚠️ Uneven press — one arm higher. Focus on even pressing."); score -= 1; }
+        if (torsoAng > 15) { corrections.push("🔙 Excessive lean back — brace core and keep ribs down. Leaning risks lower back strain."); score -= 1; }
+        else { positives.push("✅ Solid upright torso — safe pressing position."); }
+    }
+
+    if (exercise === "Lateral Raise") {
+        if (ls < 60) { corrections.push("⬆️ Arms not raised enough — lift until arms are parallel to the floor for full medial delt activation."); score -= 1; }
+        else { positives.push("✅ Good arm height — effective range of motion."); }
+
+        if (avgElbow < 130) { corrections.push("📐 Elbows bending too much — keep arms relatively straight, slight bend only."); score -= 1; }
+        else { positives.push("✅ Good arm extension — elbows slightly bent as recommended."); }
+
+        if (torsoAng > 15) { corrections.push("🚨 Swinging/using momentum — stay upright and lift controlled. Reduce weight if needed."); score -= 2; }
+        else { positives.push("✅ Controlled movement — no swinging."); }
+    }
+
+    if (exercise === "Bench Press") {
+        if (elbowAsym > 20) { corrections.push("⚠️ Uneven elbow angles — use dumbbells to fix imbalances."); score -= 1; }
+        if (avgElbow < 70) { positives.push("✅ Good range — elbows at full depth."); }
+        else { corrections.push("📐 Limited ROM — lower bar closer to chest for full pec activation."); score -= 1; }
+
+        if (ls > 90 || rs > 90) { corrections.push("🚨 Elbows flaring too wide — tuck to ~45°. Think 'arrow shape' not 'T shape.'"); score -= 2; }
+        else { positives.push("✅ Good elbow tuck — shoulders safe."); }
+    }
+
+    if (exercise === "Bicep Curl") {
+        if (ls > 30 || rs > 30) { corrections.push("💪 Upper arms moving — keep elbows pinned at sides. Swinging uses momentum, not biceps."); score -= 2; }
+        else { positives.push("✅ Elbows stationary — good isolation."); }
+
+        if (avgElbow < 40) { positives.push("✅ Full contraction at the top — great squeeze."); }
+        if (torsoAng > 10) { corrections.push("🔙 Leaning back to curl — reduce weight and stay upright."); score -= 1; }
+    }
+
+    if (exercise === "Lunge" || exercise === "Bulgarian Split Squat") {
+        const frontKnee = Math.min(lk, rk);
+        if (frontKnee > 100) { corrections.push("🦵 Front knee not deep enough — aim for 90°. Thigh parallel to ground."); score -= 1; }
+        else { positives.push("✅ Good depth on front leg."); }
+
+        if (torsoAng > 25) { corrections.push("🔙 Leaning forward — keep torso upright to load the front leg properly."); score -= 1; }
+        else { positives.push("✅ Upright torso — good form."); }
+    }
+
+    if (exercise === "Hip Thrust") {
+        if (avgHip < 150) { corrections.push("⬆️ Hips not thrust up enough — squeeze glutes at the top until hips are fully extended."); score -= 1; }
+        else { positives.push("✅ Full hip extension — great glute squeeze."); }
+
+        if (avgKnee < 70 || avgKnee > 110) { corrections.push("📐 Knee angle should be ~90° — adjust foot placement closer or further."); score -= 1; }
+        else { positives.push("✅ Good knee angle — optimal for glute activation."); }
+    }
+
+    if (exercise === "Tricep Extension") {
+        if (ls > 30 || rs > 30) { corrections.push("💪 Upper arms moving — keep elbows pinned. Only the forearms should move."); score -= 2; }
+        else { positives.push("✅ Elbows stationary — good isolation."); }
+
+        if (avgElbow < 140) { corrections.push("📐 Not fully extending — lock out at the bottom for full tricep contraction."); score -= 1; }
+        else { positives.push("✅ Full extension — great lockout."); }
+    }
+
+    if (exercise === "Push-Up") {
+        if (avgElbow > 120) { corrections.push("📐 Not going low enough — chest should nearly touch the ground."); score -= 1; }
+        else { positives.push("✅ Good depth — chest near the floor."); }
+
+        const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+        const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+        const ankleY = (landmarks[27].y + landmarks[28].y) / 2;
+        if (hipY < shoulderY - 0.05) { corrections.push("🚨 Hips sagging — engage core and keep body in a straight plank line."); score -= 2; }
+        else if (hipY > ankleY + 0.05) { corrections.push("🔺 Hips piking up — lower your hips into a straight line."); score -= 1; }
+        else { positives.push("✅ Good plank position — body in a straight line."); }
     }
 
     if (corrections.length === 0 && positives.length === 0) {
@@ -206,7 +458,6 @@ function analyzeForm(landmarks: PoseLandmark[], exercise: string): AnalysisResul
     }
 
     score = Math.max(1, Math.min(10, score));
-
     return { exercise, score, corrections, positives, jointAngles };
 }
 
@@ -565,7 +816,7 @@ export function FormAnalyzer() {
                     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-8 text-center">
                         <p className="text-sm text-slate-500 mb-3">Exercises the AI can detect and analyze:</p>
                         <div className="flex flex-wrap justify-center gap-2">
-                            {["Squat", "Deadlift", "Bench Press", "Overhead Press", "Barbell Row", "Bicep Curl", "Lunge"].map(ex => (
+                            {["Squat", "Deadlift", "Romanian Deadlift", "Bench Press", "Overhead Press", "Barbell Row", "Bicep Curl", "Lunge", "Lateral Raise", "Push-Up", "Hip Thrust", "Front Squat", "Bulgarian Split Squat", "Tricep Extension"].map(ex => (
                                 <Badge key={ex} className="bg-slate-800/50 text-slate-400 border-forge-border hover:text-forge-orange transition-colors">{ex}</Badge>
                             ))}
                         </div>
