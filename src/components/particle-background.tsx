@@ -29,8 +29,8 @@ export function ParticleBackground() {
                 },
                 modes: {
                     repulse: {
-                        distance: 200,
-                        duration: 0.6,
+                        distance: 220,
+                        duration: 0.66,
                     },
                 },
             },
@@ -40,14 +40,14 @@ export function ParticleBackground() {
                 },
                 links: {
                     color: "#ff6b2b",
-                    distance: 180,
+                    distance: 198,
                     enable: true,
-                    opacity: 0.2,
-                    width: 1.2,
+                    opacity: 0.22,
+                    width: 1.3,
                 },
                 move: {
                     enable: true,
-                    speed: 1.5,
+                    speed: 1.65,
                     direction: "none" as const,
                     random: true,
                     straight: false,
@@ -59,16 +59,16 @@ export function ParticleBackground() {
                     density: {
                         enable: true,
                     },
-                    value: 150,
+                    value: 165,
                 },
                 opacity: {
-                    value: { min: 0.1, max: 0.375 },
+                    value: { min: 0.11, max: 0.41 },
                 },
                 shape: {
                     type: "circle",
                 },
                 size: {
-                    value: { min: 1.5, max: 6.25 },
+                    value: { min: 1.65, max: 6.9 },
                 },
             },
             detectRetina: true,
