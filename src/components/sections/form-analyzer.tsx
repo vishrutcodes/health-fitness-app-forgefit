@@ -56,7 +56,20 @@ function isBodyHorizontal(landmarks: PoseLandmark[]): boolean {
     const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
     const hipY = (landmarks[23].y + landmarks[24].y) / 2;
     const ankleY = (landmarks[27].y + landmarks[28].y) / 2;
-    return Math.abs(shoulderY - hipY) < 0.1 && Math.abs(hipY - ankleY) < 0.15;
+    return Math.abs(shoulderY - hipY) < 0.15 && Math.abs(hipY - ankleY) < 0.2;
+}
+
+/* ---------- Helper: torso horizontality score (0=vertical, 1=horizontal) ---------- */
+function torsoHorizontalScore(landmarks: PoseLandmark[]): number {
+    const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+    const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+    const shoulderX = (landmarks[11].x + landmarks[12].x) / 2;
+    const hipX = (landmarks[23].x + landmarks[24].x) / 2;
+    const dx = Math.abs(shoulderX - hipX);
+    const dy = Math.abs(shoulderY - hipY);
+    // When dx >> dy the torso is more horizontal
+    if (dx + dy === 0) return 0;
+    return dx / (dx + dy);
 }
 
 /* ---------- Helper: torso incline for bench variants ---------- */
@@ -109,9 +122,10 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
     }
 
     // ===================== DEADLIFT (Conventional) =====================
-    // Forward lean + hip hinge dominant + knees moderately bent
+    // Forward lean + hip hinge dominant + knees moderately bent + STANDING (not horizontal)
     {
         let c = 0;
+        const horizScore = torsoHorizontalScore(landmarks);
         if (torsoAngle > 30) c += 25;   // forward lean (KEY)
         if (torsoAngle > 50) c += 10;   // deep lean bonus
         if (avgHip < 130) c += 15;      // hips flexed
@@ -120,7 +134,10 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
         if (kneeAsymmetry < 15) c += 5;  // symmetric
         if (avgElbow > 140) c += 10;    // arms straight (holding bar)
         if (handsAboveShoulder < -0.05) c += 5; // hands below shoulders
-        scores.push({ name: "Deadlift", confidence: c });
+        // PENALTY: deadlifts are done standing — if body is horizontal, it's NOT a deadlift
+        if (horizontal) c -= 40;
+        if (horizScore > 0.6) c -= 20;  // torso quite horizontal
+        scores.push({ name: "Deadlift", confidence: Math.max(0, c) });
     }
 
     // ===================== ROMANIAN DEADLIFT =====================
@@ -133,7 +150,9 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
         if (hipKneeRatio < 0.75) c += 15; // hip much more bent than knee
         if (avgElbow > 150) c += 10;    // arms hanging straight
         if (kneeAsymmetry < 10) c += 5;
-        scores.push({ name: "Romanian Deadlift", confidence: c });
+        // PENALTY: RDLs are standing — horizontal body means it's not an RDL
+        if (horizontal) c -= 35;
+        scores.push({ name: "Romanian Deadlift", confidence: Math.max(0, c) });
     }
 
     // ===================== BARBELL ROW =====================
@@ -221,18 +240,38 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
     }
 
     // ===================== PUSH-UP =====================
-    // Horizontal body + elbows bent + body straight plank
+    // Horizontal body + elbows bent + body straight plank + arms under body
     {
         let c = 0;
-        if (horizontal) c += 25;
-        if (avgElbow < 120) c += 15;
-        // Push-up: face down, arms under shoulders
+        const horizScore = torsoHorizontalScore(landmarks);
         const noseY = landmarks[0].y;
         const hipY = (landmarks[23].y + landmarks[24].y) / 2;
-        if (Math.abs(noseY - hipY) < 0.15) c += 15; // body in plank
-        if (avgKnee > 150) c += 10;    // legs straight
-        if (handsAboveShoulder < 0) c += 10;
-        scores.push({ name: "Push-Up", confidence: c });
+        const ankleY2 = (landmarks[27].y + landmarks[28].y) / 2;
+        const shoulderY2 = (landmarks[11].y + landmarks[12].y) / 2;
+
+        // Body orientation signals — push-ups are done with body horizontal/near-horizontal
+        if (horizontal) c += 30;                          // fully horizontal body
+        else if (horizScore > 0.5) c += 20;               // mostly horizontal torso
+        if (Math.abs(shoulderY2 - hipY) < 0.15) c += 10;  // shoulder-hip aligned
+        if (Math.abs(hipY - ankleY2) < 0.2) c += 10;      // hip-ankle aligned
+
+        // Elbow bend — essential for push-up
+        if (avgElbow < 120) c += 15;
+        if (avgElbow < 90) c += 10;  // deep push-up bonus
+
+        // Plank alignment — nose, hips, ankles roughly level
+        if (Math.abs(noseY - hipY) < 0.18) c += 10;       // body in plank
+
+        // Legs straight
+        if (avgKnee > 145) c += 10;
+
+        // Hands below or near shoulder level (supporting weight)
+        if (handsAboveShoulder < 0.02) c += 10;
+
+        // PENALTY: if torso is clearly upright, it's NOT a push-up
+        if (torsoAngle < 20 && !horizontal && horizScore < 0.4) c -= 30;
+
+        scores.push({ name: "Push-Up", confidence: Math.max(0, c) });
     }
 
     // ===================== BICEP CURL =====================
