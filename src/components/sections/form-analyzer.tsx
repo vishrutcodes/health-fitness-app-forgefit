@@ -41,10 +41,33 @@ function detectExercise(landmarks: PoseLandmark[]): string {
     const avgHip = (leftHip + rightHip) / 2;
     const avgShoulder = (leftShoulder + rightShoulder) / 2;
 
-    // Squat: deep knee bend + hip flexion
-    if (avgKnee < 120 && avgHip < 120) return "Squat";
-    // Deadlift: bent hip, straight-ish knees
+    // Torso lean: how far forward shoulders are relative to hips
+    // In MediaPipe normalized coords, Y increases downward
+    const shoulderMidY = (landmarks[11].y + landmarks[12].y) / 2;
+    const hipMidY = (landmarks[23].y + landmarks[24].y) / 2;
+    const shoulderMidX = (landmarks[11].x + landmarks[12].x) / 2;
+    const hipMidX = (landmarks[23].x + landmarks[24].x) / 2;
+    // Forward lean: how far shoulders are in front of (or above) hips
+    const torsoLean = Math.abs(shoulderMidX - hipMidX) + Math.max(0, hipMidY - shoulderMidY) * 0.5;
+    const isForwardLean = shoulderMidY > hipMidY - 0.05; // shoulders close to or below hips = leaning forward
+
+    // Lunge: one knee deep, the other extended — strong asymmetry
+    if ((leftKnee < 110 || rightKnee < 110) && Math.abs(leftKnee - rightKnee) > 30) return "Lunge";
+
+    // DEADLIFT vs SQUAT: both have hip flexion + knee bend
+    // Key difference: deadlift has FORWARD LEAN (shoulders ahead/near hips), squat stays UPRIGHT
+    if (avgHip < 140 && avgKnee < 160) {
+        // If shoulders are close to or below hip level = forward lean = deadlift
+        if (isForwardLean && avgHip < avgKnee) return "Deadlift";
+        // If hip angle is much tighter than knee = hip hinge = deadlift
+        if (avgHip < avgKnee - 20) return "Deadlift";
+        // Otherwise upright torso with deep knee bend = squat
+        if (avgKnee < 130) return "Squat";
+    }
+
+    // Pure hip hinge with straighter knees = deadlift
     if (avgHip < 130 && avgKnee > 140) return "Deadlift";
+
     // Overhead Press: arms overhead, elbows extending
     if (avgShoulder > 150 && avgElbow > 140) return "Overhead Press";
     // Bench Press / Push-Up: elbows bent at sides
@@ -53,8 +76,6 @@ function detectExercise(landmarks: PoseLandmark[]): string {
     if (avgElbow < 80 && avgShoulder < 40) return "Bicep Curl";
     // Row: bent over, elbows bending
     if (avgHip < 130 && avgElbow < 120 && avgShoulder > 40) return "Barbell Row";
-    // Lunge: one knee deep
-    if ((leftKnee < 110 || rightKnee < 110) && Math.abs(leftKnee - rightKnee) > 30) return "Lunge";
     // Standing: upright
     if (avgKnee > 160 && avgHip > 160) return "Standing Position";
 
