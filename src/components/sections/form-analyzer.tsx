@@ -310,13 +310,298 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
         scores.push({ name: "Front Squat", confidence: c });
     }
 
-    // ===================== STANDING (idle) =====================
+    // ===================== PULL-UP =====================
+    // Arms above head + elbows bent pulling up + vertical torso
     {
         let c = 0;
-        if (avgKnee > 160) c += 30;
-        if (avgHip > 160) c += 30;
+        if (handsAboveShoulder > 0.1) c += 25;
+        if (avgElbow < 100) c += 20;
+        if (avgShoulder > 130) c += 15;
+        if (torsoAngle < 15) c += 10;
+        if (avgKnee > 140) c += 5;
+        if (avgHip > 150) c += 5;
+        scores.push({ name: "Pull-Up", confidence: c });
+    }
+
+    // ===================== CHIN-UP =====================
+    // Like pull-up but palms facing in — tighter grip, more supination
+    {
+        let c = 0;
+        if (handsAboveShoulder > 0.1) c += 20;
+        if (avgElbow < 90) c += 25;
+        if (avgShoulder > 120) c += 15;
+        if (torsoAngle < 20) c += 10;
+        if (avgKnee > 140) c += 5;
+        scores.push({ name: "Chin-Up", confidence: c });
+    }
+
+    // ===================== LAT PULLDOWN =====================
+    // Seated + arms pulling down from above + elbows bent
+    {
+        let c = 0;
+        if (avgKnee > 70 && avgKnee < 110) c += 15; // seated ~90°
+        if (avgElbow < 100) c += 20;
+        if (handsAboveShoulder > 0.0) c += 15;
+        if (avgShoulder > 100) c += 20;
+        if (torsoAngle < 20) c += 10;
+        scores.push({ name: "Lat Pulldown", confidence: c });
+    }
+
+    // ===================== SEATED CABLE ROW =====================
+    // Seated + arms pulling toward torso + elbows bent behind body
+    {
+        let c = 0;
+        if (avgKnee > 70 && avgKnee < 120) c += 15; // seated
+        if (avgElbow < 100) c += 20;
+        if (avgShoulder > 30 && avgShoulder < 80) c += 15;
+        if (torsoAngle < 20) c += 15;
+        if (handsAboveShoulder < 0) c += 10;
+        scores.push({ name: "Seated Cable Row", confidence: c });
+    }
+
+    // ===================== FACE PULL =====================
+    // Standing + elbows high + hands near face level
+    {
+        let c = 0;
+        if (avgElbow < 100) c += 15;
+        if (avgShoulder > 70 && avgShoulder < 130) c += 20;
+        if (handsAboveShoulder > -0.03 && handsAboveShoulder < 0.08) c += 20;
+        if (torsoAngle < 15) c += 10;
+        if (avgKnee > 150) c += 5;
+        scores.push({ name: "Face Pull", confidence: c });
+    }
+
+    // ===================== DUMBBELL FLY =====================
+    // Horizontal + arms wide + elbows slightly bent
+    {
+        let c = 0;
+        if (horizontal) c += 25;
+        if (avgElbow > 120 && avgElbow < 175) c += 20;
+        if (avgShoulder > 60 && avgShoulder < 140) c += 20;
+        if (avgKnee > 130) c += 5;
+        scores.push({ name: "Dumbbell Fly", confidence: c });
+    }
+
+    // ===================== CHEST DIP =====================
+    // Upright/slight lean + elbows bent + hands below shoulders + body elevated
+    {
+        let c = 0;
+        if (avgElbow < 100) c += 25;
+        if (torsoAngle > 10 && torsoAngle < 40) c += 15;
+        if (handsAboveShoulder < -0.05) c += 15;
+        if (avgShoulder > 30 && avgShoulder < 80) c += 15;
+        if (avgKnee > 130) c += 5;
+        scores.push({ name: "Chest Dip", confidence: c });
+    }
+
+    // ===================== HAMMER CURL =====================
+    // Like bicep curl but neutral grip — arms by sides, elbows bent
+    {
+        let c = 0;
+        if (avgElbow < 90) c += 25;
+        if (avgShoulder < 35) c += 20;
+        if (torsoAngle < 15) c += 10;
+        if (avgKnee > 155) c += 5;
+        if (handsAboveShoulder < 0) c += 10;
+        scores.push({ name: "Hammer Curl", confidence: c });
+    }
+
+    // ===================== PREACHER CURL =====================
+    // Seated/leaning + arms on angled pad + tight elbow bend
+    {
+        let c = 0;
+        if (avgElbow < 80) c += 25;
+        if (torsoAngle > 15 && torsoAngle < 45) c += 20;
+        if (avgShoulder > 30 && avgShoulder < 80) c += 15;
+        if (handsAboveShoulder < -0.05) c += 10;
+        scores.push({ name: "Preacher Curl", confidence: c });
+    }
+
+    // ===================== SKULL CRUSHER =====================
+    // Horizontal + elbows bent + hands above/near face
+    {
+        let c = 0;
+        if (horizontal) c += 25;
+        if (avgElbow < 90) c += 25;
+        if (avgShoulder > 70 && avgShoulder < 130) c += 15;
+        if (handsAboveShoulder > -0.05) c += 5;
+        scores.push({ name: "Skull Crusher", confidence: c });
+    }
+
+    // ===================== LEG PRESS =====================
+    // Seated recline + knees bent deeply + hips flexed
+    {
+        let c = 0;
+        if (avgKnee < 100) c += 25;
+        if (avgHip < 100) c += 20;
+        if (torsoAngle > 30 && torsoAngle < 70) c += 15; // reclined
+        if (avgElbow > 140) c += 5; // arms straight on handles
+        scores.push({ name: "Leg Press", confidence: c });
+    }
+
+    // ===================== LEG EXTENSION =====================
+    // Seated + knees extending + thighs stationary
+    {
+        let c = 0;
+        if (avgKnee > 110 && avgKnee < 175) c += 20;
+        if (avgHip > 70 && avgHip < 110) c += 20; // seated ~90°
+        if (torsoAngle < 20) c += 15;
+        if (avgElbow > 130) c += 5;
+        if (avgShoulder < 40) c += 5;
+        scores.push({ name: "Leg Extension", confidence: c });
+    }
+
+    // ===================== LEG CURL =====================
+    // Lying face down or seated + knees curling
+    {
+        let c = 0;
+        if (avgKnee < 100) c += 25;
+        if (horizontal) c += 15;  // lying variation
+        if (avgHip > 150) c += 10; // hips straight
+        if (avgElbow > 140) c += 5;
+        scores.push({ name: "Leg Curl", confidence: c });
+    }
+
+    // ===================== CALF RAISE =====================
+    // Standing very upright + knees straight + ankles plantarflexing
+    {
+        let c = 0;
+        if (avgKnee > 165) c += 25;
+        if (avgHip > 165) c += 20;
+        if (torsoAngle < 8) c += 20;
+        if (avgShoulder < 30) c += 5;
+        // Approximate: shoulders elevated (on toes) vs standing flat
+        const ankleY = (landmarks[27].y + landmarks[28].y) / 2;
+        const shoulderY2 = (landmarks[11].y + landmarks[12].y) / 2;
+        if (shoulderY2 < ankleY - 0.25) c += 10;
+        scores.push({ name: "Calf Raise", confidence: c });
+    }
+
+    // ===================== PLANK =====================
+    // Horizontal body + arms straight/elbows locked + body rigid
+    {
+        let c = 0;
+        if (horizontal) c += 25;
+        if (avgElbow > 150) c += 15; // arms straight (full plank)
+        if (avgKnee > 160) c += 15;  // legs straight
+        const noseY = landmarks[0].y;
+        const hipY2 = (landmarks[23].y + landmarks[24].y) / 2;
+        if (Math.abs(noseY - hipY2) < 0.12) c += 15; // body aligned
+        if (avgHip > 150) c += 5;
+        scores.push({ name: "Plank", confidence: c });
+    }
+
+    // ===================== CRUNCH / SIT-UP =====================
+    // Lying with knees bent + torso curling up
+    {
+        let c = 0;
+        if (avgKnee < 100) c += 15;
+        if (avgHip < 120) c += 20;
+        if (torsoAngle > 20 && torsoAngle < 60) c += 15;
+        if (horizontal || torsoAngle > 45) c += 10;
+        if (avgElbow < 120) c += 5; // hands behind head
+        scores.push({ name: "Crunch / Sit-Up", confidence: c });
+    }
+
+    // ===================== RUSSIAN TWIST =====================
+    // Seated V-position + torso rotating + hands moving side to side
+    {
+        let c = 0;
+        if (avgHip < 110) c += 20;
+        if (torsoAngle > 25 && torsoAngle < 55) c += 20;
+        if (avgKnee < 120) c += 10;
+        if (avgElbow < 130) c += 10;
+        const handDiffX = Math.abs(landmarks[15].x - landmarks[16].x);
+        if (handDiffX < 0.08) c += 10; // hands close together (holding weight)
+        scores.push({ name: "Russian Twist", confidence: c });
+    }
+
+    // ===================== KETTLEBELL SWING =====================
+    // Hip-hinge explosive + arms swinging forward/up + leg drive
+    {
+        let c = 0;
+        if (torsoAngle > 25) c += 15;
+        if (avgHip < 140) c += 15;
+        if (avgElbow > 140) c += 15; // arms straight
+        if (avgKnee > 120 && avgKnee < 170) c += 10;
+        if (handsAboveShoulder > -0.1 && handsAboveShoulder < 0.15) c += 10;
+        if (avgShoulder > 50) c += 10;
+        scores.push({ name: "Kettlebell Swing", confidence: c });
+    }
+
+    // ===================== GOOD MORNING =====================
+    // Like RDL but bar on back — straight knees + deep hip hinge
+    {
+        let c = 0;
+        if (avgKnee > 150) c += 20;
+        if (torsoAngle > 45) c += 25;
+        if (avgHip < 110) c += 20;
+        if (avgElbow < 120) c += 10; // arms holding bar on upper back
+        if (avgShoulder > 40 && avgShoulder < 100) c += 10;
+        scores.push({ name: "Good Morning", confidence: c });
+    }
+
+    // ===================== SHRUG =====================
+    // Standing upright + shoulders elevated + arms straight down
+    {
+        let c = 0;
+        if (avgKnee > 160) c += 10;
+        if (avgHip > 160) c += 10;
         if (torsoAngle < 10) c += 15;
-        if (avgShoulder < 30) c += 10;
+        if (avgElbow > 150) c += 15;  // arms straight
+        if (avgShoulder > 15 && avgShoulder < 50) c += 25; // shoulders shrugged up
+        if (handsAboveShoulder < -0.05) c += 10;
+        scores.push({ name: "Shrug", confidence: c });
+    }
+
+    // ===================== UPRIGHT ROW =====================
+    // Standing + elbows high + hands below chin + pulling up
+    {
+        let c = 0;
+        if (avgElbow < 100) c += 20;
+        if (avgShoulder > 60 && avgShoulder < 120) c += 20;
+        if (torsoAngle < 15) c += 10;
+        if (handsAboveShoulder > -0.08 && handsAboveShoulder < 0.05) c += 15;
+        if (avgKnee > 155) c += 5;
+        scores.push({ name: "Upright Row", confidence: c });
+    }
+
+    // ===================== ARNOLD PRESS =====================
+    // Standing/seated + arms rotating from front to overhead
+    {
+        let c = 0;
+        if (handsAboveShoulder > 0.0) c += 20;
+        if (avgElbow > 100 && avgElbow < 170) c += 15;
+        if (avgShoulder > 100) c += 20;
+        if (torsoAngle < 20) c += 10;
+        if (avgKnee > 140) c += 5;
+        scores.push({ name: "Arnold Press", confidence: c });
+    }
+
+    // ===================== CABLE CROSSOVER =====================
+    // Standing + arms wide then crossing in front
+    {
+        let c = 0;
+        if (avgShoulder > 50 && avgShoulder < 130) c += 20;
+        if (avgElbow > 120 && avgElbow < 175) c += 15;
+        if (torsoAngle < 25) c += 10;
+        if (handsAboveShoulder > -0.1 && handsAboveShoulder < 0.05) c += 15;
+        if (avgKnee > 145) c += 5;
+        // Slight forward lean common in cable crossover
+        if (torsoAngle > 8 && torsoAngle < 30) c += 10;
+        scores.push({ name: "Cable Crossover", confidence: c });
+    }
+
+    // ===================== STANDING POSITION (idle / non-exercise) =====================
+    // Strict: very upright, all joints near full extension, no significant flexion
+    {
+        let c = 0;
+        if (avgKnee > 160) c += 25;
+        if (avgHip > 160) c += 25;
+        if (torsoAngle < 10) c += 15;
+        if (avgShoulder < 25) c += 10;  // arms resting by sides
+        if (avgElbow > 150) c += 10;     // arms straight
+        if (handsAboveShoulder < -0.1) c += 5; // hands hanging low
         scores.push({ name: "Standing Position", confidence: c });
     }
 
@@ -327,7 +612,7 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
 function detectExercise(landmarks: PoseLandmark[]): string {
     const scores = scoreAllExercises(landmarks);
     // Require minimum confidence threshold
-    if (scores[0].confidence < 30) return "Unknown Exercise";
+    if (scores[0].confidence < 40) return "Unknown Exercise";
     return scores[0].name;
 }
 
@@ -691,7 +976,7 @@ export function FormAnalyzer() {
             }
 
             // Gate 3: Check if confidence is too low (ambiguous/random movement)
-            if (lastAllScores.length > 0 && lastAllScores[0].confidence < 35) {
+            if (lastAllScores.length > 0 && lastAllScores[0].confidence < 40) {
                 setResult({
                     exercise: "Unrecognized Movement",
                     score: 0,
@@ -1061,7 +1346,7 @@ export function FormAnalyzer() {
                     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-8 text-center">
                         <p className="text-sm text-slate-500 mb-3">Exercises the AI can detect and analyze:</p>
                         <div className="flex flex-wrap justify-center gap-2">
-                            {["Squat", "Deadlift", "Romanian Deadlift", "Bench Press (Flat)", "Incline Bench Press", "Decline Bench Press", "Overhead Press", "Barbell Row", "Bicep Curl", "Lunge", "Lateral Raise", "Push-Up", "Hip Thrust", "Front Squat", "Bulgarian Split Squat", "Tricep Extension"].map(ex => (
+                            {["Squat", "Front Squat", "Deadlift", "Romanian Deadlift", "Bench Press (Flat)", "Incline Bench Press", "Decline Bench Press", "Overhead Press", "Arnold Press", "Barbell Row", "Seated Cable Row", "Upright Row", "Pull-Up", "Chin-Up", "Lat Pulldown", "Bicep Curl", "Hammer Curl", "Preacher Curl", "Tricep Extension", "Skull Crusher", "Lunge", "Bulgarian Split Squat", "Leg Press", "Leg Extension", "Leg Curl", "Calf Raise", "Hip Thrust", "Lateral Raise", "Face Pull", "Shrug", "Cable Crossover", "Dumbbell Fly", "Chest Dip", "Push-Up", "Plank", "Crunch / Sit-Up", "Russian Twist", "Kettlebell Swing", "Good Morning", "Burpee"].map(ex => (
                                 <Badge key={ex} className="bg-slate-800/50 text-slate-400 border-forge-border hover:text-forge-orange transition-colors">{ex}</Badge>
                             ))}
                         </div>
