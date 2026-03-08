@@ -99,8 +99,8 @@ export default function ProgressPage() {
                         <p className="text-slate-400 mt-1">Track your body measurements over time</p>
                     </div>
                     <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogTrigger>
-                            <Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0 shadow-lg shadow-forge-orange/25"><Plus className="h-4 w-4 mr-2" />Log Measurement</Button>
+                        <DialogTrigger render={<Button className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0 shadow-lg shadow-forge-orange/25" />}>
+                            <Plus className="h-4 w-4 mr-2" />Log Measurement
                         </DialogTrigger>
                         <DialogContent className="bg-[#0d1117] border-forge-border text-white">
                             <DialogHeader><DialogTitle className="text-white">Log Measurement</DialogTitle></DialogHeader>
