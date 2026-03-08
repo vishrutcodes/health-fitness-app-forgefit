@@ -4,7 +4,7 @@
 
 ### *Forge Your Dream Physique*
 
-A premium, production-grade fitness web application combining **artificial intelligence**, **real-time data visualization**, and **interactive fitness tools** into a single, beautifully designed platform. ForgeFit empowers users to generate personalized workout plans, analyze nutrition on the fly, track body composition changes, log personal records, and receive real-time coaching — all powered by **Groq's LLaMA 3.3 70B** large language model.
+A premium, production-grade fitness web application combining **artificial intelligence**, **real-time data visualization**, and **interactive fitness tools** into a single, beautifully designed platform. ForgeFit empowers users to generate personalized workout plans, analyze nutrition on the fly, track body composition changes, log personal records, and receive real-time coaching — all powered by **Groq's LLaMA 3.3 70B** large language model and **MediaPipe Pose Landmarker** for ML-powered exercise form analysis.
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-ForgeFit-FF6B2B?style=for-the-badge)](https://health-fitness-app-forgefit.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/vishrutcodes/health-fitness-app-forgefit)
@@ -13,6 +13,7 @@ A premium, production-grade fitness web application combining **artificial intel
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.x-06B6D4?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com)
 [![React](https://img.shields.io/badge/React-19.2.3-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth_&_DB-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-Pose_AI-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker)
 
 </div>
 
@@ -37,6 +38,7 @@ A premium, production-grade fitness web application combining **artificial intel
    - [Knowledge Base](#10--knowledge-base--fitness-education-hub)
    - [Body Progress Tracker](#11--body-progress-tracker--measurement-dashboard)
    - [Personal Records Tracker](#12--personal-records-tracker--strength-dashboard)
+   - [AI Form Analyzer (ML Pose Detection)](#13--ai-form-analyzer--ml-powered-exercise-form-analysis)
 6. [Page & Route Architecture](#-page--route-architecture)
 7. [Component Architecture](#-component-architecture)
 8. [Design System & UI Philosophy](#-design-system--ui-philosophy)
@@ -60,6 +62,7 @@ ForgeFit solves all three problems by combining:
 - **🧮 Scientific Calculators** — Evidence-based formulas (Mifflin-St Jeor for BMR, Epley for 1RM, U.S. Navy method for body fat) built into dedicated calculator components
 - **⏱️ Training Tools** — Configurable timers, phase planners, and periodization tools for structured training
 - **🔐 Supabase Authentication & Cloud Sync** — Secure email/password sign-in with profile dropdown, welcome flash toast, and cloud-stored Progress & PRs data synced across devices via Supabase PostgreSQL with Row Level Security
+- **🧠 ML Pose Detection** — Client-side MediaPipe Pose Landmarker for real-time exercise identification, form scoring, and joint angle analysis — runs entirely in-browser with GPU acceleration
 
 ### What Makes ForgeFit Different
 
@@ -120,6 +123,14 @@ ForgeFit solves all three problems by combining:
 |-----------|---------|-----------------|
 | **Groq SDK** | 0.37.0 | Official Groq TypeScript SDK — connects to Groq's ultra-fast LLM inference API. ForgeFit uses the `llama-3.3-70b-versatile` model for all AI features. Groq provides 10x faster inference than traditional GPU providers. |
 | **LLaMA 3.3 70B** | Versatile | Meta's open-weight large language model — 70 billion parameters, fine-tuned for instruction following. Handles fitness coaching, nutritional analysis, exercise guidance, diet planning, and training periodization. |
+
+### ML Pose Detection & Computer Vision
+
+| Technology | Version | Role in Project |
+|-----------|---------|-----------------|
+| **MediaPipe Pose Landmarker** | Latest | Google's on-device ML model for real-time human pose estimation. Detects 33 body landmarks (x, y, z coordinates + visibility) per frame. Runs client-side via WebAssembly + GPU delegate for sub-30ms inference. Used in the AI Form Analyzer for exercise detection and form analysis. |
+| **@mediapipe/tasks-vision** | Latest | Official MediaPipe Tasks Vision SDK — provides `PoseLandmarker` and `FilesetResolver` APIs for browser-based pose detection. Dynamically imported to avoid SSR issues. |
+| **Custom Multi-Signal Scoring Engine** | — | Hand-engineered rule-based classification system that computes confidence scores for 17 exercises using joint angles, torso inclination, stance width, hand position, and body orientation signals. Replaces traditional ML classifiers with interpretable, tunable heuristics. |
 
 ### Data Visualization & Storage
 
@@ -522,6 +533,114 @@ A dedicated dashboard for logging and tracking personal bests across major lifts
 
 ---
 
+### 13. 🧠 AI Form Analyzer — ML-Powered Exercise Form Analysis
+
+**Component:** `src/components/sections/form-analyzer.tsx`
+**ML Model:** MediaPipe Pose Landmarker (Lite, Float16)
+**Runs On:** Client-side (browser) — GPU-accelerated via WebAssembly
+
+The AI Form Analyzer is ForgeFit's most technically sophisticated feature — a complete **computer vision pipeline** that lets users upload an exercise video, automatically detects which exercise is being performed, analyzes joint angles and body positioning, and provides detailed form corrections.
+
+#### Why MediaPipe Over Traditional Computer Vision?
+
+| Approach | Limitation | MediaPipe Advantage |
+|----------|-----------|--------------------|
+| **OpenCV (Haar/HOG)** | Only detects bounding boxes — no skeleton or joint data. Cannot analyze form. | MediaPipe provides 33 precise 3D body landmarks with x, y, z coordinates and visibility scores |
+| **Custom CNN/YOLO** | Requires massive labeled datasets of exercise poses. Months of training, expensive GPU compute. | MediaPipe is pre-trained by Google on millions of diverse poses — works out of the box |
+| **OpenPose** | Requires backend server with GPU. High latency, infrastructure costs. | MediaPipe runs **entirely in the browser** via WASM + GPU delegate — zero server costs, sub-30ms inference |
+| **TensorFlow.js PoseNet** | Lower accuracy (17 keypoints only). Struggles with occluded limbs. | MediaPipe has 33 keypoints including hands and feet, with depth (z-axis) for 3D understanding |
+| **Server-side ML (Flask/FastAPI)** | Video upload → server processing → wait for response. Privacy concerns with uploading workout videos. | All processing happens **on-device** — video never leaves the user's browser. True privacy. |
+
+#### ML Pipeline Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    CLIENT-SIDE ML PIPELINE                          │
+│                                                                     │
+│  ┌──────────┐   ┌───────────────────┐   ┌──────────────────────┐   │
+│  │ Video    │   │ MediaPipe Pose    │   │ Multi-Signal         │   │
+│  │ Upload   │──▶│ Landmarker (Lite) │──▶│ Scoring Engine       │   │
+│  │ (.mp4)   │   │ 33 landmarks/frame│   │ 17 exercise patterns │   │
+│  └──────────┘   └───────────────────┘   └──────────┬───────────┘   │
+│                                                     │               │
+│                        ┌────────────────────────────┘               │
+│                        │                                             │
+│  ┌─────────────────────▼───────────────────────────────────────┐   │
+│  │                  ANALYSIS ENGINE                             │   │
+│  │                                                              │   │
+│  │  1. Sample 8 frames evenly across video duration             │   │
+│  │  2. Run PoseLandmarker on each frame (GPU-accelerated)       │   │
+│  │  3. Compute joint angles (knee, elbow, hip, shoulder, torso) │   │
+│  │  4. Score confidence for ALL 17 exercises per frame          │   │
+│  │  5. Pick highest-confidence exercise per frame               │   │
+│  │  6. Majority vote across frames = final classification       │   │
+│  │  7. Run exercise-specific form analysis rules                │   │
+│  │  8. Compute model accuracy (frame consistency %)             │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                    OUTPUT                                    │   │
+│  │  • Detected Exercise (with confidence)                       │   │
+│  │  • Form Score (1-10)                                         │   │
+│  │  • Corrections (what to fix)                                 │   │
+│  │  • Positives (what you're doing right)                       │   │
+│  │  • Joint Angles (9 measurements)                             │   │
+│  │  • Model Diagnostics (accuracy, predictions, confusion)      │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### Multi-Signal Confidence Scoring System
+
+Instead of a black-box neural network classifier, ForgeFit uses an **interpretable, multi-signal scoring engine** that computes confidence scores for each exercise based on biomechanical signals:
+
+| Signal | What It Measures | Example Use |
+|--------|-----------------|-------------|
+| **Joint Angles** | Knee, elbow, hip, shoulder angles via 3-point angle calculation | Squat requires knee < 130°, deadlift requires hip angle < knee angle |
+| **Torso Inclination** | Angle of shoulder-hip line from vertical (0° = upright, 90° = horizontal) | Squat = upright (< 35°), deadlift = forward lean (> 30°) |
+| **Stance Width** | Ankle-to-ankle horizontal distance (normalized) | Lunges require wide split stance (> 0.15) |
+| **Hand Position** | Hand height relative to shoulders | Overhead press = hands above, bicep curl = hands below |
+| **Body Orientation** | Whether body is horizontal (bench/push-up) or vertical (standing) | Bench press requires horizontal body |
+| **Hip-to-Knee Ratio** | Relative hip vs. knee flexion | Hip hinge (deadlift) has ratio < 0.9, squat has ratio 0.7-1.15 |
+| **Knee Asymmetry** | Difference between left and right knee angles | Symmetry → squat (< 15°), asymmetry → lunge (> 25°) |
+| **Bench Incline Angle** | Torso angle on bench (flat vs. incline vs. decline) | Flat = 0°, incline = 20-55°, decline = shoulder below hips |
+
+Each exercise has a scoring block that awards confidence points for matching signals and applies **cross-penalties** for conflicting signals. For example:
+- Incline Bench Press gets +30 for incline angle 20-55° but **-30 penalty** if body is truly horizontal (preventing flat bench misclassification)
+- Squat gets +20 for upright torso but deadlift gets +25 for forward lean (preventing squat/deadlift confusion)
+
+#### Classification Accuracy & Model Diagnostics
+
+Since this is a rule-based scoring system rather than a trained neural network, accuracy is measured as **classification consistency** — what percentage of sampled frames agree on the same exercise:
+
+- **8 frames** are sampled evenly across the video duration
+- Each frame is independently classified by the scoring engine
+- The **majority vote** determines the final exercise
+- **Model Accuracy** = (frames matching majority vote) / (total frames) × 100%
+
+The Model Diagnostics panel (toggled via 🔬 button) displays:
+
+| Panel | What It Shows |
+|-------|---------------|
+| **Classification Consistency** | Circular gauge with accuracy % — Green (≥ 85%), Yellow (≥ 60%), Red (< 60%) |
+| **Confidence Predictions** | Horizontal bar chart of confidence scores for all 17 exercises — detected exercise highlighted in orange |
+| **Frame-by-Frame Classification** | Each frame's individual classification with match/mismatch indicators |
+
+#### 17 Supported Exercises
+
+| Category | Exercises |
+|----------|-----------|
+| **Legs** | Squat, Front Squat, Lunge, Bulgarian Split Squat, Hip Thrust |
+| **Back** | Deadlift, Romanian Deadlift, Barbell Row |
+| **Chest** | Bench Press (Flat), Incline Bench Press, Decline Bench Press, Push-Up |
+| **Shoulders** | Overhead Press, Lateral Raise |
+| **Arms** | Bicep Curl, Tricep Extension |
+| **Idle** | Standing Position |
+
+Each exercise has dedicated **form analysis rules** that check for specific biomechanical errors (e.g., knee cave in squats, excessive forward lean in deadlifts, elbow flare in bench press) and provide actionable corrections.
+
+---
+
 ## 📄 Page & Route Architecture
 
 | Route | Rendering | Component Count | Description |
@@ -562,6 +681,10 @@ src/components/
 │   │                                  #   bulking, maintaining, deload phases with calorie targets
 │   ├── knowledge-base.tsx             # [58 lines] Fitness education hub — 5 guide categories
 │   │                                  #   with hover animations and AI Coach CTA
+│   ├── form-analyzer.tsx              # [1000+ lines] ML-powered form analyzer — MediaPipe pose
+│   │                                  #   detection, multi-signal scoring for 17 exercises,
+│   │                                  #   form corrections, model diagnostics (accuracy,
+│   │                                  #   confusion matrix, confidence predictions)
 │   └── footer.tsx                     # [80 lines] Site footer with links and branding
 │
 ├── ai-coach-dialog.tsx                # [154 lines] Floating chat widget — persistent conversation
@@ -578,7 +701,7 @@ src/components/
     └── table.tsx                      # Table components
 ```
 
-**Total:** ~2,400+ lines of hand-written, typed component code across 14 feature components.
+**Total:** ~3,500+ lines of hand-written, typed component code across 15 feature components.
 
 ---
 
