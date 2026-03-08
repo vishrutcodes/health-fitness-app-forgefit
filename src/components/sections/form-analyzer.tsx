@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Play, Loader2, Brain, Target, AlertTriangle, CheckCircle, Video, RotateCcw, Star } from "lucide-react";
+import { Upload, Play, Loader2, Brain, Target, AlertTriangle, CheckCircle, Video, RotateCcw, Star, ChevronDown, BarChart3, Activity } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,11 @@ interface AnalysisResult {
     corrections: string[];
     positives: string[];
     jointAngles: Record<string, number>;
+    allScores: ExerciseScore[];
+    frameClassifications: string[];
+    modelAccuracy: number;
 }
+interface ExerciseScore { name: string; confidence: number }
 
 /* ---------- Angle helpers ---------- */
 function angle(a: PoseLandmark, b: PoseLandmark, c: PoseLandmark): number {
@@ -52,13 +56,21 @@ function isBodyHorizontal(landmarks: PoseLandmark[]): boolean {
     const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
     const hipY = (landmarks[23].y + landmarks[24].y) / 2;
     const ankleY = (landmarks[27].y + landmarks[28].y) / 2;
-    // If shoulder, hip, ankle are all at similar Y = horizontal
     return Math.abs(shoulderY - hipY) < 0.1 && Math.abs(hipY - ankleY) < 0.15;
 }
 
-/* ---------- Multi-signal confidence scoring for each exercise ---------- */
-interface ExerciseScore { name: string; confidence: number }
+/* ---------- Helper: torso incline for bench variants ---------- */
+function benchInclineAngle(landmarks: PoseLandmark[]): number {
+    const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+    const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+    const shoulderX = (landmarks[11].x + landmarks[12].x) / 2;
+    const hipX = (landmarks[23].x + landmarks[24].x) / 2;
+    const dx = hipX - shoulderX;
+    const dy = hipY - shoulderY;
+    return Math.abs(Math.atan2(dy, dx) * 180 / Math.PI);
+}
 
+/* ---------- Multi-signal confidence scoring for each exercise ---------- */
 function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
     const lk = angle(landmarks[23], landmarks[25], landmarks[27]);
     const rk = angle(landmarks[24], landmarks[26], landmarks[28]);
@@ -163,16 +175,49 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
         scores.push({ name: "Lateral Raise", confidence: c });
     }
 
-    // ===================== BENCH PRESS =====================
-    // Horizontal body + elbows bent + arms at chest level
+    // ===================== FLAT BENCH PRESS =====================
+    // Truly horizontal body + elbows bent + no incline
     {
         let c = 0;
-        if (horizontal) c += 35;        // lying down (KEY)
-        if (avgElbow < 120) c += 20;    // elbows bent
-        if (avgElbow < 90) c += 10;     // deep press
+        const incAngle = benchInclineAngle(landmarks);
+        if (horizontal) c += 30;
+        if (avgElbow < 120) c += 20;
+        if (avgElbow < 90) c += 10;
         if (avgShoulder < 100) c += 10;
-        if (!horizontal && avgElbow < 110 && avgShoulder < 80) c += 15; // fallback for side-view
-        scores.push({ name: "Bench Press", confidence: c });
+        // PENALTY if body has incline — not flat bench
+        if (incAngle > 20 && incAngle < 70) c -= 25;
+        if (!horizontal && avgElbow < 110 && avgShoulder < 80) c += 10;
+        scores.push({ name: "Bench Press (Flat)", confidence: Math.max(0, c) });
+    }
+
+    // ===================== INCLINE BENCH PRESS =====================
+    // Shoulders higher than hips (20-50° incline) + elbows bent + pressing upward
+    {
+        let c = 0;
+        const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+        const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+        const incAngle = benchInclineAngle(landmarks);
+        if (shoulderY < hipY) c += 15;           // shoulders above hips (KEY)
+        if (incAngle > 20 && incAngle < 55) c += 30; // incline angle 20-55° (KEY)
+        if (avgElbow < 120) c += 15;
+        if (avgElbow < 90) c += 10;
+        if (avgShoulder > 50 && avgShoulder < 120) c += 10; // arms angled up
+        if (horizontal) c -= 30;                 // PENALTY if truly flat
+        scores.push({ name: "Incline Bench Press", confidence: Math.max(0, c) });
+    }
+
+    // ===================== DECLINE BENCH PRESS =====================
+    // Hips higher than shoulders + elbows bent + pressing
+    {
+        let c = 0;
+        const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+        const hipY = (landmarks[23].y + landmarks[24].y) / 2;
+        if (hipY < shoulderY) c += 30;          // hips above shoulders (KEY)
+        if (avgElbow < 120) c += 15;
+        if (avgElbow < 90) c += 10;
+        if (avgShoulder < 90) c += 10;
+        if (horizontal) c -= 15;
+        scores.push({ name: "Decline Bench Press", confidence: Math.max(0, c) });
     }
 
     // ===================== PUSH-UP =====================
@@ -398,13 +443,20 @@ function analyzeForm(landmarks: PoseLandmark[], exercise: string): AnalysisResul
         else { positives.push("✅ Controlled movement — no swinging."); }
     }
 
-    if (exercise === "Bench Press") {
+    if (exercise === "Bench Press (Flat)" || exercise === "Incline Bench Press" || exercise === "Decline Bench Press") {
         if (elbowAsym > 20) { corrections.push("⚠️ Uneven elbow angles — use dumbbells to fix imbalances."); score -= 1; }
         if (avgElbow < 70) { positives.push("✅ Good range — elbows at full depth."); }
         else { corrections.push("📐 Limited ROM — lower bar closer to chest for full pec activation."); score -= 1; }
 
         if (ls > 90 || rs > 90) { corrections.push("🚨 Elbows flaring too wide — tuck to ~45°. Think 'arrow shape' not 'T shape.'"); score -= 2; }
         else { positives.push("✅ Good elbow tuck — shoulders safe."); }
+
+        if (exercise === "Incline Bench Press" && torsoAng < 15) {
+            corrections.push("📐 Bench should be inclined at 30-45° — adjust your bench angle for upper pec focus."); score -= 1;
+        }
+        if (exercise === "Decline Bench Press" && torsoAng < 10) {
+            corrections.push("📐 Body not at decline angle — position hips higher than shoulders on the bench."); score -= 1;
+        }
     }
 
     if (exercise === "Bicep Curl") {
@@ -458,7 +510,7 @@ function analyzeForm(landmarks: PoseLandmark[], exercise: string): AnalysisResul
     }
 
     score = Math.max(1, Math.min(10, score));
-    return { exercise, score, corrections, positives, jointAngles };
+    return { exercise, score, corrections, positives, jointAngles, allScores: [], frameClassifications: [], modelAccuracy: 0 };
 }
 
 /* ---------- Skeleton drawing ---------- */
@@ -499,6 +551,7 @@ export function FormAnalyzer() {
     const [analyzing, setAnalyzing] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
     const [progress, setProgress] = useState(0);
+    const [showDiagnostics, setShowDiagnostics] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -554,6 +607,8 @@ export function FormAnalyzer() {
             const duration = video.duration;
             const numSamples = 8;
             const allResults: AnalysisResult[] = [];
+            const frameClassifications: string[] = [];
+            let lastAllScores: ExerciseScore[] = [];
 
             for (let i = 0; i < numSamples; i++) {
                 const time = (duration * (i + 1)) / (numSamples + 1);
@@ -573,6 +628,8 @@ export function FormAnalyzer() {
                     const exercise = detectExercise(landmarks);
                     const analysis = analyzeForm(landmarks, exercise);
                     allResults.push(analysis);
+                    frameClassifications.push(exercise);
+                    lastAllScores = scoreAllExercises(landmarks);
 
                     // Draw final frame skeleton
                     if (i === Math.floor(numSamples / 2)) {
@@ -601,12 +658,18 @@ export function FormAnalyzer() {
                 const avgScore = Math.round(allResults.reduce((s, r) => s + r.score, 0) / allResults.length);
                 const lastAngles = allResults[allResults.length - 1].jointAngles;
 
+                const matchCount = frameClassifications.filter(f => f === detectedExercise).length;
+                const modelAccuracy = Math.round((matchCount / frameClassifications.length) * 100);
+
                 setResult({
                     exercise: detectedExercise,
                     score: avgScore,
                     corrections: allCorrections,
                     positives: allPositives,
                     jointAngles: lastAngles,
+                    allScores: lastAllScores,
+                    frameClassifications,
+                    modelAccuracy,
                 });
             } else {
                 setResult({
@@ -615,6 +678,9 @@ export function FormAnalyzer() {
                     corrections: ["❌ Could not detect a human pose in the video. Please ensure the full body is visible and the video is well-lit."],
                     positives: [],
                     jointAngles: {},
+                    allScores: [],
+                    frameClassifications: [],
+                    modelAccuracy: 0,
                 });
             }
 
@@ -627,6 +693,9 @@ export function FormAnalyzer() {
                 corrections: ["❌ An error occurred during analysis. Please try a different video or check your browser compatibility."],
                 positives: [],
                 jointAngles: {},
+                allScores: [],
+                frameClassifications: [],
+                modelAccuracy: 0,
             });
         }
 
@@ -805,6 +874,114 @@ export function FormAnalyzer() {
                                                     ))}
                                                 </div>
                                             </div>
+
+                                            {/* === Model Diagnostics Toggle === */}
+                                            <button
+                                                onClick={() => setShowDiagnostics(!showDiagnostics)}
+                                                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/60 border border-forge-border hover:border-forge-orange/40 transition-colors text-sm"
+                                            >
+                                                <span className="flex items-center gap-2 text-slate-300 font-semibold">
+                                                    <Activity className="h-4 w-4 text-forge-orange" />
+                                                    🔬 Model Diagnostics
+                                                </span>
+                                                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${showDiagnostics ? "rotate-180" : ""}`} />
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {showDiagnostics && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: "auto" }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        className="space-y-5 overflow-hidden"
+                                                    >
+                                                        {/* --- Model Accuracy Gauge --- */}
+                                                        <div className="p-4 rounded-xl bg-slate-900/60 border border-forge-border">
+                                                            <p className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                                                                <Target className="h-4 w-4 text-forge-orange" />
+                                                                Classification Consistency
+                                                            </p>
+                                                            <div className="flex items-center gap-6">
+                                                                <div className="relative w-24 h-24 shrink-0">
+                                                                    <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                                                                        <circle cx="50" cy="50" r="42" stroke="#1e293b" strokeWidth="8" fill="none" />
+                                                                        <circle
+                                                                            cx="50" cy="50" r="42"
+                                                                            stroke={result.modelAccuracy >= 85 ? "#34d399" : result.modelAccuracy >= 60 ? "#fbbf24" : "#f87171"}
+                                                                            strokeWidth="8" fill="none"
+                                                                            strokeDasharray={`${result.modelAccuracy * 2.64} 264`}
+                                                                            strokeLinecap="round"
+                                                                        />
+                                                                    </svg>
+                                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                                        <span className={`text-2xl font-black ${result.modelAccuracy >= 85 ? "text-emerald-400" : result.modelAccuracy >= 60 ? "text-yellow-400" : "text-red-400"}`}>
+                                                                            {result.modelAccuracy}%
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-xs text-slate-500 leading-relaxed">
+                                                                    <p>Across <span className="text-white font-semibold">{result.frameClassifications.length}</span> sampled frames,</p>
+                                                                    <p><span className="text-white font-semibold">{result.frameClassifications.filter(f => f === result.exercise).length}</span> frames identified as <span className="text-forge-orange font-semibold">{result.exercise}</span>.</p>
+                                                                    <p className="mt-1">{result.modelAccuracy >= 85 ? "✅ High confidence — consistent detection." : result.modelAccuracy >= 60 ? "⚠️ Moderate — some frames show different exercises." : "🔴 Low consistency — model may be uncertain."}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* --- Confidence Predictions Bar Chart --- */}
+                                                        {result.allScores.length > 0 && (
+                                                            <div className="p-4 rounded-xl bg-slate-900/60 border border-forge-border">
+                                                                <p className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                                                                    <BarChart3 className="h-4 w-4 text-forge-orange" />
+                                                                    Confidence Predictions
+                                                                </p>
+                                                                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                                                                    {result.allScores.filter(s => s.confidence > 0).map((s) => {
+                                                                        const maxConf = Math.max(...result.allScores.map(x => x.confidence), 1);
+                                                                        const pct = Math.round((s.confidence / maxConf) * 100);
+                                                                        const isDetected = s.name === result.exercise;
+                                                                        return (
+                                                                            <div key={s.name} className="flex items-center gap-2 text-xs">
+                                                                                <span className={`w-36 truncate text-right ${isDetected ? "text-forge-orange font-bold" : "text-slate-500"}`}>{s.name}</span>
+                                                                                <div className="flex-1 bg-slate-800 rounded-full h-3 overflow-hidden">
+                                                                                    <motion.div
+                                                                                        initial={{ width: 0 }}
+                                                                                        animate={{ width: `${pct}%` }}
+                                                                                        transition={{ duration: 0.5, delay: 0.1 }}
+                                                                                        className={`h-full rounded-full ${isDetected ? "bg-linear-to-r from-forge-orange to-forge-orange-light" : "bg-slate-600"}`}
+                                                                                    />
+                                                                                </div>
+                                                                                <span className={`w-8 text-right font-mono ${isDetected ? "text-forge-orange font-bold" : "text-slate-500"}`}>{s.confidence}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* --- Confusion Matrix --- */}
+                                                        {result.frameClassifications.length > 0 && (
+                                                            <div className="p-4 rounded-xl bg-slate-900/60 border border-forge-border">
+                                                                <p className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                                                                    <Brain className="h-4 w-4 text-forge-orange" />
+                                                                    Frame-by-Frame Classification
+                                                                </p>
+                                                                <div className="space-y-1.5">
+                                                                    {result.frameClassifications.map((cls, i) => {
+                                                                        const isMatch = cls === result.exercise;
+                                                                        return (
+                                                                            <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs ${isMatch ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
+                                                                                <span className="text-slate-500 font-mono w-16">Frame {i + 1}</span>
+                                                                                <span className={`font-semibold ${isMatch ? "text-emerald-400" : "text-amber-400"}`}>{cls}</span>
+                                                                                <span className="ml-auto">{isMatch ? "✅" : "⚠️"}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -816,7 +993,7 @@ export function FormAnalyzer() {
                     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-8 text-center">
                         <p className="text-sm text-slate-500 mb-3">Exercises the AI can detect and analyze:</p>
                         <div className="flex flex-wrap justify-center gap-2">
-                            {["Squat", "Deadlift", "Romanian Deadlift", "Bench Press", "Overhead Press", "Barbell Row", "Bicep Curl", "Lunge", "Lateral Raise", "Push-Up", "Hip Thrust", "Front Squat", "Bulgarian Split Squat", "Tricep Extension"].map(ex => (
+                            {["Squat", "Deadlift", "Romanian Deadlift", "Bench Press (Flat)", "Incline Bench Press", "Decline Bench Press", "Overhead Press", "Barbell Row", "Bicep Curl", "Lunge", "Lateral Raise", "Push-Up", "Hip Thrust", "Front Squat", "Bulgarian Split Squat", "Tricep Extension"].map(ex => (
                                 <Badge key={ex} className="bg-slate-800/50 text-slate-400 border-forge-border hover:text-forge-orange transition-colors">{ex}</Badge>
                             ))}
                         </div>
