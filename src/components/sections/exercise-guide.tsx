@@ -14,6 +14,8 @@ const popularExercises = [
     "Seated Row", "Front Squat", "Hip Thrust", "Face Pull", "Tricep Pushdown",
     "Hammer Curl", "Lateral Raise", "Bulgarian Split Squat", "Rack Pull", "T-Bar Row",
     "Close Grip Bench Press", "Leg Curl", "Calf Raise", "Preacher Curl", "Skull Crusher",
+    "Pendlay Row", "Sumo Deadlift", "Arnold Press", "Chest Dip", "Cable Lateral Raise",
+    "Goblet Squat", "Deficit Deadlift", "Reverse Fly", "Concentration Curl", "Hack Squat",
 ];
 
 interface ExerciseData {
