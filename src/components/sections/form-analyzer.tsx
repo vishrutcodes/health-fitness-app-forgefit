@@ -643,6 +643,74 @@ export function FormAnalyzer() {
 
             poseLandmarker.close();
 
+            // ====== STRICT VALIDATION: Reject non-exercise videos ======
+            const poseDetectionRate = allResults.length / numSamples;
+
+            // Gate 1: Not enough frames with a detectable human pose
+            if (poseDetectionRate < 0.5) {
+                setResult({
+                    exercise: "Not an Exercise Video",
+                    score: 0,
+                    corrections: [
+                        "❌ No exercise detected — this doesn't appear to be a workout video.",
+                        "📹 Please upload a video where your full body is clearly visible while performing an exercise.",
+                        "💡 Ensure good lighting, a clear camera angle, and that at least your torso and limbs are in frame.",
+                    ],
+                    positives: [],
+                    jointAngles: {},
+                    allScores: [],
+                    frameClassifications: [],
+                    modelAccuracy: 0,
+                });
+                setProgress(100);
+                setAnalyzing(false);
+                return;
+            }
+
+            // Gate 2: Check if most frames are "Standing Position" or "Unknown Exercise" (not exercising)
+            const nonExerciseLabels = ["Standing Position", "Unknown Exercise"];
+            const nonExerciseCount = frameClassifications.filter(f => nonExerciseLabels.includes(f)).length;
+            if (nonExerciseCount > frameClassifications.length * 0.6) {
+                setResult({
+                    exercise: "No Exercise Detected",
+                    score: 0,
+                    corrections: [
+                        "❌ This video does not show a recognizable exercise movement.",
+                        "🏋️ Please upload a video of yourself performing an exercise like squats, deadlifts, bench press, curls, etc.",
+                        "📐 The AI needs to see clear joint movement (bending, pressing, pulling) to analyze form.",
+                    ],
+                    positives: [],
+                    jointAngles: {},
+                    allScores: [],
+                    frameClassifications,
+                    modelAccuracy: 0,
+                });
+                setProgress(100);
+                setAnalyzing(false);
+                return;
+            }
+
+            // Gate 3: Check if confidence is too low (ambiguous/random movement)
+            if (lastAllScores.length > 0 && lastAllScores[0].confidence < 35) {
+                setResult({
+                    exercise: "Unrecognized Movement",
+                    score: 0,
+                    corrections: [
+                        "❌ The model could not confidently identify any exercise in this video.",
+                        "🎥 Make sure you're performing a clear, standard exercise movement.",
+                        "💡 Tips: Face the camera from the side for best results. Avoid loose clothing that hides joint positions.",
+                    ],
+                    positives: [],
+                    jointAngles: {},
+                    allScores: lastAllScores,
+                    frameClassifications,
+                    modelAccuracy: 0,
+                });
+                setProgress(100);
+                setAnalyzing(false);
+                return;
+            }
+
             // Aggregate results — pick most common exercise, merge all feedback
             if (allResults.length > 0) {
                 // Most frequent exercise name
