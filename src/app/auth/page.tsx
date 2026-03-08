@@ -26,7 +26,7 @@ export default function AuthPage() {
         const supabase = createClient();
 
         if (mode === "signup") {
-            const { error } = await supabase.auth.signUp({
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: { data: { full_name: name } },
@@ -36,10 +36,16 @@ export default function AuthPage() {
                 setLoading(false);
                 return;
             }
-            // Auto sign-in after signup
+            // If session exists, user is auto-signed in (email confirm OFF)
+            if (data.session) {
+                window.location.href = "/";
+                return;
+            }
+            // Fallback: try manual sign-in
             const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
             if (signInErr) {
-                setError(signInErr.message);
+                // Account created but needs email confirmation
+                setError("Account created! Please check your email to confirm, then sign in.");
                 setLoading(false);
                 return;
             }
