@@ -59,6 +59,7 @@ ForgeFit solves all three problems by combining:
 - **📊 Data-Driven Tracking** — Interactive Recharts visualizations for body composition and strength progress with full CRUD operations
 - **🧮 Scientific Calculators** — Evidence-based formulas (Mifflin-St Jeor for BMR, Epley for 1RM, U.S. Navy method for body fat) built into dedicated calculator components
 - **⏱️ Training Tools** — Configurable timers, phase planners, and periodization tools for structured training
+- **🔐 Supabase Authentication & Cloud Sync** — Secure email/password sign-in with profile dropdown, welcome flash toast, and cloud-stored Progress & PRs data synced across devices via Supabase PostgreSQL with Row Level Security
 
 ### What Makes ForgeFit Different
 
@@ -70,6 +71,7 @@ ForgeFit solves all three problems by combining:
 | Separate apps for each feature | 15+ features in a single, cohesive platform |
 | Generic UI | Premium dark-mode glassmorphism with Framer Motion micro-animations |
 | Monthly subscriptions | Completely free and open source |
+| No user accounts or data sync | Supabase Auth with profile dropdown, cloud-synced PRs & Progress across devices |
 
 ---
 
