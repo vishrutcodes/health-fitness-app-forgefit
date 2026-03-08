@@ -608,12 +608,54 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
     return scores.sort((a, b) => b.confidence - a.confidence);
 }
 
-/* ---------- Exercise detection — picks highest confidence ---------- */
+/* ---------- Exercise detection — STRICT multi-gate validation ---------- */
 function detectExercise(landmarks: PoseLandmark[]): string {
     const scores = scoreAllExercises(landmarks);
-    // Require minimum confidence threshold
-    if (scores[0].confidence < 40) return "Unknown Exercise";
-    return scores[0].name;
+    const top = scores[0];
+    const second = scores[1];
+    const standingScore = scores.find(s => s.name === "Standing Position")?.confidence || 0;
+
+    // Gate A: Absolute minimum confidence — must be very sure
+    if (top.confidence < 50) return "Unknown Exercise";
+
+    // Gate B: Must significantly beat "Standing Position"
+    // If the top exercise barely beats standing, person is likely just standing/sitting casually
+    if (top.name !== "Standing Position" && (top.confidence - standingScore) < 15) {
+        return "Unknown Exercise";
+    }
+
+    // Gate C: Confidence margin — top exercise must clearly beat 2nd place
+    // If multiple exercises score similarly, it's noise from a casual pose, not a real exercise
+    if (top.name !== "Standing Position" && (top.confidence - second.confidence) < 10) {
+        return "Unknown Exercise";
+    }
+
+    // Gate D: Movement intensity check — at least one major joint must show significant flexion
+    // Casual activities (sitting, talking, eating) have nearly all joints relaxed
+    const lk = angle(landmarks[23], landmarks[25], landmarks[27]);
+    const rk = angle(landmarks[24], landmarks[26], landmarks[28]);
+    const le = angle(landmarks[11], landmarks[13], landmarks[15]);
+    const re = angle(landmarks[12], landmarks[14], landmarks[16]);
+    const lh = angle(landmarks[11], landmarks[23], landmarks[25]);
+    const rh = angle(landmarks[12], landmarks[24], landmarks[26]);
+
+    const hasKneeFlexion = Math.min(lk, rk) < 145;
+    const hasElbowFlexion = Math.min(le, re) < 120;
+    const hasHipFlexion = Math.min(lh, rh) < 140;
+    const hasArmsRaised = handHeightRelShoulder(landmarks) > 0.03;
+    const isHorizontal = isBodyHorizontal(landmarks);
+    const hasForwardLean = torsoAngleFromVertical(landmarks) > 25;
+
+    // Must have at least ONE strong movement signal
+    const movementSignals = [hasKneeFlexion, hasElbowFlexion, hasHipFlexion, hasArmsRaised, isHorizontal, hasForwardLean];
+    const activeSignals = movementSignals.filter(Boolean).length;
+
+    if (activeSignals < 1) return "Unknown Exercise";
+
+    // Gate E: If detected as "Standing Position", that means no exercise
+    if (top.name === "Standing Position") return "Unknown Exercise";
+
+    return top.name;
 }
 
 /* ---------- Form analysis per exercise ---------- */
@@ -955,7 +997,7 @@ export function FormAnalyzer() {
             // Gate 2: Check if most frames are "Standing Position" or "Unknown Exercise" (not exercising)
             const nonExerciseLabels = ["Standing Position", "Unknown Exercise"];
             const nonExerciseCount = frameClassifications.filter(f => nonExerciseLabels.includes(f)).length;
-            if (nonExerciseCount > frameClassifications.length * 0.6) {
+            if (nonExerciseCount > frameClassifications.length * 0.4) {
                 setResult({
                     exercise: "No Exercise Detected",
                     score: 0,
@@ -976,7 +1018,14 @@ export function FormAnalyzer() {
             }
 
             // Gate 3: Check if confidence is too low (ambiguous/random movement)
-            if (lastAllScores.length > 0 && lastAllScores[0].confidence < 40) {
+            const standingScoreVal = lastAllScores.find(s => s.name === "Standing Position")?.confidence || 0;
+            const topScore = lastAllScores.length > 0 ? lastAllScores[0] : null;
+            const secondScore = lastAllScores.length > 1 ? lastAllScores[1] : null;
+            if (topScore && (
+                topScore.confidence < 50 ||
+                (topScore.name !== "Standing Position" && (topScore.confidence - standingScoreVal) < 15) ||
+                (secondScore && topScore.name !== "Standing Position" && (topScore.confidence - secondScore.confidence) < 10)
+            )) {
                 setResult({
                     exercise: "Unrecognized Movement",
                     score: 0,
