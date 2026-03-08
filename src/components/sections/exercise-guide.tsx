@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-const popularExercises = ["Squat", "Bench Press", "Deadlift", "Pull Up", "Overhead Press", "Barbell Row", "Lunge", "Dips"];
+const popularExercises = [
+    "Squat", "Bench Press", "Deadlift", "Pull Up", "Overhead Press", "Barbell Row", "Lunge", "Dips",
+    "Romanian Deadlift", "Incline Bench Press", "Leg Press", "Lat Pulldown", "Cable Fly",
+    "Seated Row", "Front Squat", "Hip Thrust", "Face Pull", "Tricep Pushdown",
+    "Hammer Curl", "Lateral Raise", "Bulgarian Split Squat", "Rack Pull", "T-Bar Row",
+    "Close Grip Bench Press", "Leg Curl", "Calf Raise", "Preacher Curl", "Skull Crusher",
+];
 
 interface ExerciseData {
     name: string;
