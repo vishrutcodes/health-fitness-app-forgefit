@@ -16,6 +16,7 @@ const popularExercises = [
     "Close Grip Bench Press", "Leg Curl", "Calf Raise", "Preacher Curl", "Skull Crusher",
     "Pendlay Row", "Sumo Deadlift", "Arnold Press", "Chest Dip", "Cable Lateral Raise",
     "Goblet Squat", "Deficit Deadlift", "Reverse Fly", "Concentration Curl", "Hack Squat",
+    "Flat Dumbbell Press", "Incline Dumbbell Press", "Pec Deck Fly",
 ];
 
 interface ExerciseData {
