@@ -23,14 +23,7 @@ export function ParticleBackground() {
             interactivity: {
                 events: {
                     onHover: {
-                        enable: true,
-                        mode: "repulse",
-                    },
-                },
-                modes: {
-                    repulse: {
-                        distance: 220,
-                        duration: 0.66,
+                        enable: false,
                     },
                 },
             },
@@ -40,14 +33,14 @@ export function ParticleBackground() {
                 },
                 links: {
                     color: "#ff6b2b",
-                    distance: 198,
+                    distance: 200,
                     enable: true,
-                    opacity: 0.22,
-                    width: 1.3,
+                    opacity: 0.25,
+                    width: 1.4,
                 },
                 move: {
                     enable: true,
-                    speed: 1.65,
+                    speed: 2,
                     direction: "none" as const,
                     random: true,
                     straight: false,
@@ -59,16 +52,16 @@ export function ParticleBackground() {
                     density: {
                         enable: true,
                     },
-                    value: 165,
+                    value: 200,
                 },
                 opacity: {
-                    value: { min: 0.11, max: 0.41 },
+                    value: { min: 0.15, max: 0.5 },
                 },
                 shape: {
                     type: "circle",
                 },
                 size: {
-                    value: { min: 1.65, max: 6.9 },
+                    value: { min: 1.5, max: 7 },
                 },
             },
             detectRetina: true,
