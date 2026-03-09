@@ -191,10 +191,13 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
         if (avgKnee > 120 && avgKnee < 165) c += 5;
 
         // ======= PHASE C: LOCKOUT (standing tall, hips through) =======
-        // Near-vertical torso (< 15°)
-        if (torsoAng < 15 && avgHip > 160 && avgKnee > 160) c += 10;
-        // Hips fully extended
-        if (avgHip > 165) c += 5;
+        // Near-vertical torso — this IS a valid deadlift position!
+        if (torsoAng < 15 && avgHip > 155 && avgKnee > 155) c += 25;
+        // Hips fully extended (glute squeeze at top)
+        if (avgHip > 160) c += 10;
+        if (avgKnee > 160) c += 5;
+        // Standing tall with straight arms = holding bar at lockout
+        if (torsoAng < 12 && avgElbow > 150 && avgHip > 150) c += 15;
 
         // ======= UNIVERSAL DEADLIFT SIGNALS (any phase) =======
         // Forward lean present (THE key differentiator from squat)
@@ -219,9 +222,11 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
         // Wrists directly below shoulders (arms hang straight)
         if (Math.abs(wristX - shoulderX) < 0.06) c += 5;
 
-        // ======= HARD ANTI-SQUAT PENALTIES =======
-        if (torsoAng < 20) c -= 45;  // upright = squat
-        if (torsoAng < 10) c -= 25;  // very upright = definitely squat
+        // ======= CONDITIONAL ANTI-SQUAT PENALTIES =======
+        // Only penalize upright torso IF knees are also bent (actual squat)
+        // At deadlift lockout, torso IS upright but knees/hips are LOCKED OUT
+        if (torsoAng < 20 && avgKnee < 145) c -= 35;  // upright + knees bent = squat
+        if (torsoAng < 10 && avgKnee < 140) c -= 20;  // very upright + knees bent
         if (avgKnee < 85) c -= 35;   // extremely deep knees = squat
         if (hkRatio > 1.05 && avgKnee < 120) c -= 20; // balanced knee-hip = squat
         // ======= HARD ANTI-BENCH PENALTIES =======
@@ -644,7 +649,7 @@ export function FormAnalyzer() {
             // Gate 2: Check if most frames are "Standing Position" or "Unknown Exercise" (not exercising)
             const nonExerciseLabels = ["Standing Position", "Unknown Exercise"];
             const nonExerciseCount = frameClassifications.filter(f => nonExerciseLabels.includes(f)).length;
-            if (nonExerciseCount > frameClassifications.length * 0.4) {
+            if (nonExerciseCount > frameClassifications.length * 0.65) {
                 setResult({
                     exercise: "No Exercise Detected",
                     score: 0,
