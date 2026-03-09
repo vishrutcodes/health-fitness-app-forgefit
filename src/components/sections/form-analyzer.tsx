@@ -147,149 +147,210 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
 
     const scores: ExerciseScore[] = [];
 
+    // Additional landmark computations for detailed analysis
+    const ankleY = (landmarks[27].y + landmarks[28].y) / 2;
+    const wristY = (landmarks[15].y + landmarks[16].y) / 2;
+    const noseY = landmarks[0].y;
+    const wristX = (landmarks[15].x + landmarks[16].x) / 2;
+    const shoulderX = (landmarks[11].x + landmarks[12].x) / 2;
+    const hipX = (landmarks[23].x + landmarks[24].x) / 2;
+    const kneeY = (landmarks[25].y + landmarks[26].y) / 2;
+    const spineLength = Math.sqrt((shoulderY - hipY) ** 2 + (shoulderX - hipX) ** 2);
+    const shinAngle = Math.abs(Math.atan2(landmarks[27].y - landmarks[25].y, landmarks[27].x - landmarks[25].x) * 180 / Math.PI);
+    const shoulderWidth = Math.abs(landmarks[11].x - landmarks[12].x);
+    const gripWidth = Math.abs(landmarks[15].x - landmarks[16].x);
+    const handsInFront = wristX > Math.min(landmarks[11].x, landmarks[12].x) - 0.05 &&
+        wristX < Math.max(landmarks[11].x, landmarks[12].x) + 0.05;
+    const wristBelowKnee = wristY > kneeY;
+    const wristBelowHip = wristY > hipY;
+    const hipAboveKnee = hipY < kneeY; // in image coords, smaller Y = higher
+
     // ===================== 1. DEADLIFT =====================
-    // UNIQUE SIGNATURE: Standing + significant forward lean (hip hinge) + STRAIGHT arms + hands near floor
-    // KEY DIFFERENTIATOR from SQUAT: torso lean > 25° (squat is upright < 35°)
-    // KEY DIFFERENTIATOR from BENCH: standing (bench is horizontal/lying)
+    // PHASES: Setup (bent, hands at bar) → Pull (bar rising) → Lockout (standing tall)
+    // CAMERA: Side view (best), Front (can see stance), Back (visible lean)
+    // DEFINING: Forward lean + straight arms + hands near floor + hip hinge
     {
         let c = 0;
 
-        // ---- EXCLUSIVE SIGNALS (only deadlift has these) ----
-        // Forward lean / hip hinge is THE defining feature
-        if (torsoAng > 25) c += 20;
-        if (torsoAng > 35) c += 15;
-        if (torsoAng > 45) c += 10;
-        if (torsoAng > 55) c += 5;
-        // Arms MUST be straight (holding bar, not curling)
-        if (avgElbow > 140) c += 15;
-        if (avgElbow > 160) c += 10;
-        // Hands near ground / below hips
-        if (lowHands) c += 15;
-        if (handsRel < -0.05) c += 5;
-        if (handsRel < -0.15) c += 5;
-        // Arms hanging vertically (gripping bar)
-        if (armsHangingStraight(landmarks)) c += 10;
+        // ======= PHASE A: SETUP / BOTTOM (bent over, about to pull) =======
+        // Torso heavily angled forward (40-80°)
+        if (torsoAng > 35 && torsoAng < 80) c += 15;
+        // Arms dead-straight, hanging to bar
+        if (avgElbow > 155 && wristBelowKnee) c += 15;
+        // Hips hinged back, above knee level
+        if (avgHip < 120 && hipAboveKnee) c += 10;
+        // Knees bent but NOT deep-squat (shins ~vertical)
+        if (avgKnee > 95 && avgKnee < 145) c += 10;
 
-        // ---- SUPPORTING SIGNALS ----
-        // Standing orientation required
-        if (standing) c += 15; else c -= 80;
+        // ======= PHASE B: MID-PULL (bar passing knees) =======
+        // Moderate forward lean (25-50°)
+        if (torsoAng > 25 && torsoAng < 55) c += 10;
+        // Arms still straight
+        if (avgElbow > 145 && wristBelowHip) c += 10;
+        // Knees straightening (120-160°)
+        if (avgKnee > 120 && avgKnee < 165) c += 5;
+
+        // ======= PHASE C: LOCKOUT (standing tall, hips through) =======
+        // Near-vertical torso (< 15°)
+        if (torsoAng < 15 && avgHip > 160 && avgKnee > 160) c += 10;
+        // Hips fully extended
+        if (avgHip > 165) c += 5;
+
+        // ======= UNIVERSAL DEADLIFT SIGNALS (any phase) =======
+        // Forward lean present (THE key differentiator from squat)
+        if (torsoAng > 25) c += 15;
+        if (torsoAng > 40) c += 5;
+        // Arms straight (holding bar)
+        if (avgElbow > 140) c += 10;
+        if (avgElbow > 160) c += 5;
+        // Hands below hips / near ground
+        if (lowHands) c += 10;
+        if (handsRel < -0.05) c += 5;
+        // Arms hanging vertically
+        if (armsHangingStraight(landmarks)) c += 8;
         // Hip hinge dominant (hip angle < knee angle)
-        if (hkRatio < 0.95) c += 10;
-        if (hkRatio < 0.8) c += 5;
-        // Hips flexed significantly
-        if (avgHip < 140) c += 5;
-        if (avgHip < 110) c += 5;
-        // Knees moderately bent (NOT squat-deep, NOT locked out)
-        if (avgKnee > 100 && avgKnee < 170) c += 5;
+        if (hkRatio < 0.9) c += 8;
+        // Standing required
+        if (standing) c += 10; else c -= 80;
         // Symmetric stance
         if (kneeAsym < 15) c += 3;
+        // Grip roughly shoulder-width
+        if (Math.abs(gripWidth - shoulderWidth) < 0.1) c += 3;
+        // Wrists directly below shoulders (arms hang straight)
+        if (Math.abs(wristX - shoulderX) < 0.06) c += 5;
 
-        // ---- HARD CROSS-EXERCISE PENALTIES ----
-        // ANTI-SQUAT: if torso is upright, this is NOT a deadlift
-        if (torsoAng < 20) c -= 40;
-        if (torsoAng < 10) c -= 20;
-        // ANTI-SQUAT: if knees are extremely deep, this is a squat
-        if (avgKnee < 90) c -= 30;
-        // ANTI-SQUAT: if hip-knee ratio is balanced (squat-like), penalize
-        if (hkRatio > 1.0 && hkRatio < 1.2) c -= 15;
-        // ANTI-BENCH: if body is horizontal/lying, this is NOT a deadlift
+        // ======= HARD ANTI-SQUAT PENALTIES =======
+        if (torsoAng < 20) c -= 45;  // upright = squat
+        if (torsoAng < 10) c -= 25;  // very upright = definitely squat
+        if (avgKnee < 85) c -= 35;   // extremely deep knees = squat
+        if (hkRatio > 1.05 && avgKnee < 120) c -= 20; // balanced knee-hip = squat
+        // ======= HARD ANTI-BENCH PENALTIES =======
         if (horizontal) c -= 80;
         if (horizScore > 0.5) c -= 40;
-        // ANTI-BENCH: if arms are bent (pressing), not deadlift
-        if (avgElbow < 100) c -= 30;
+        if (avgElbow < 100) c -= 30;  // arms bent = pressing = bench
 
         scores.push({ name: "Deadlift", confidence: Math.max(0, c) });
     }
 
-    // ===================== 2. SQUAT =====================
-    // UNIQUE SIGNATURE: Standing + UPRIGHT torso + deep knee bend + hip-knee co-flexion
-    // KEY DIFFERENTIATOR from DEADLIFT: upright torso (< 35°) vs deadlift's lean (> 25°)
-    // KEY DIFFERENTIATOR from BENCH: standing (bench is horizontal/lying)
+    // ===================== 2. SQUAT (BARBELL) =====================
+    // PHASES: Standing (top) → Descent → Hole (bottom) → Ascent
+    // CAMERA: Side view (best for depth), Front (knee tracking), Back (hip shift)
+    // DEFINING: Upright torso + deep knee bend + bar on back + hip-knee co-flexion
     {
         let c = 0;
 
-        // ---- EXCLUSIVE SIGNALS (only squat has these) ----
-        // UPRIGHT torso is THE defining feature vs deadlift
-        if (torsoAng < 35) c += 20;
-        if (torsoAng < 25) c += 10;
-        if (torsoAng < 15) c += 5;
-        // Deep knee bend is required
-        if (avgKnee < 150) c += 10;
-        if (avgKnee < 130) c += 10;
-        if (avgKnee < 110) c += 10;
-        if (avgKnee < 90) c += 10;
-        if (avgKnee < 70) c += 5;
-        // Hip and knee bend TOGETHER (not hip-dominant like deadlift)
-        if (hkRatio > 0.85 && hkRatio < 1.2) c += 15;
+        // ======= PHASE A: STANDING / TOP (about to squat or just stood up) =======
+        if (avgKnee > 155 && avgHip > 155 && torsoAng < 15) c += 5;
 
-        // ---- SUPPORTING SIGNALS ----
-        // Standing orientation required
-        if (standing) c += 15; else c -= 80;
-        // Hips flexed
-        if (avgHip < 140) c += 5;
-        if (avgHip < 110) c += 5;
+        // ======= PHASE B: DESCENT (knees bending, going down) =======
+        if (avgKnee > 110 && avgKnee < 155 && torsoAng < 35) c += 10;
+        // Knees and hips bending together
+        if (avgHip < 155 && avgHip > 110 && avgKnee < 155 && avgKnee > 110) c += 8;
+
+        // ======= PHASE C: HOLE / BOTTOM (maximum depth) =======
+        // Deep knee bend is THE defining feature
+        if (avgKnee < 110) c += 15;
+        if (avgKnee < 90) c += 15;
+        if (avgKnee < 70) c += 5;
+        // Hips also deeply flexed
+        if (avgHip < 110 && avgKnee < 110) c += 10;
+        // Still upright despite depth
+        if (torsoAng < 35 && avgKnee < 120) c += 10;
+
+        // ======= PHASE D: ASCENT (driving up from bottom) =======
+        if (avgKnee > 90 && avgKnee < 140 && torsoAng < 30) c += 5;
+
+        // ======= UNIVERSAL SQUAT SIGNALS (any phase) =======
+        // UPRIGHT torso (THE key differentiator from deadlift)
+        if (torsoAng < 35) c += 15;
+        if (torsoAng < 25) c += 10;
+        if (torsoAng < 12) c += 5;
+        // Hip-knee co-flexion (both bending equally — NOT hip-dominant)
+        if (hkRatio > 0.85 && hkRatio < 1.15) c += 12;
+        // Standing required
+        if (standing) c += 10; else c -= 80;
+        // Bar on back/shoulders: elbows bent, arms up (holding bar)
+        if (avgElbow > 50 && avgElbow < 130 && avgShoulder > 35) c += 5;
         // Moderate-wide stance
         if (stance > 0.08 && stance < 0.35) c += 5;
         // Symmetric
         if (kneeAsym < 15) c += 3;
-        // Arms NOT straight down (bar on back/front rack)
-        if (avgElbow > 60) c += 3;
+        // Hips flexed
+        if (avgHip < 145) c += 5;
+        // Knee tracking: knees should be over or slightly outside ankles
+        const lkX = landmarks[25].x, laX = landmarks[27].x;
+        const rkX = landmarks[26].x, raX = landmarks[28].x;
+        if (Math.abs(lkX - laX) < 0.08 && Math.abs(rkX - raX) < 0.08) c += 3;
 
-        // ---- HARD CROSS-EXERCISE PENALTIES ----
-        // ANTI-DEADLIFT: if torso is leaning forward a lot, this is deadlift
-        if (torsoAng > 40) c -= 30;
-        if (torsoAng > 55) c -= 20;
-        // ANTI-DEADLIFT: if hip angle << knee angle (hip-dominant), that's a deadlift
-        if (hkRatio < 0.75) c -= 25;
-        // ANTI-DEADLIFT: if arms are straight and hanging down, that's deadlift grip
-        if (armsHangingStraight(landmarks) && lowHands) c -= 30;
-        // ANTI-BENCH: if body is horizontal/lying, this is NOT a squat
+        // ======= HARD ANTI-DEADLIFT PENALTIES =======
+        if (torsoAng > 40) c -= 35;   // forward lean = deadlift
+        if (torsoAng > 55) c -= 25;   // heavy lean = definitely deadlift
+        if (hkRatio < 0.75) c -= 30;  // hip-dominant = deadlift
+        if (armsHangingStraight(landmarks) && lowHands) c -= 35; // deadlift grip
+        if (wristBelowKnee && avgElbow > 155) c -= 25; // straight arms reaching to floor
+        // ======= HARD ANTI-BENCH PENALTIES =======
         if (horizontal) c -= 80;
         if (horizScore > 0.5) c -= 40;
-        // Legs straight = just standing, not squatting
-        if (avgKnee > 165) c -= 30;
+        // Legs straight = just standing
+        if (avgKnee > 168) c -= 30;
 
         scores.push({ name: "Squat", confidence: Math.max(0, c) });
     }
 
     // ===================== 3. BENCH PRESS (FLAT) =====================
-    // UNIQUE SIGNATURE: Body HORIZONTAL (lying on bench) + arms pressing up + NOT standing
-    // KEY DIFFERENTIATOR from DEADLIFT & SQUAT: horizontal body (neither deadlift nor squat is horizontal)
+    // PHASES: Lockout (arms extended) → Descent (bar lowering) → Bottom (bar on chest) → Press (pushing up)
+    // CAMERA: Side (arm angle), Above/Angle (grip width), Front
+    // DEFINING: Body horizontal/lying + arms pressing + NOT standing
     {
         let c = 0;
 
-        // ---- EXCLUSIVE SIGNALS (only bench has these) ----
-        // Body is HORIZONTAL (lying flat) — THE defining feature
-        if (horizontal) c += 35;
-        if (horizScore > 0.45) c += 15;
-        if (horizScore > 0.6) c += 10;
-        // NOT standing (lying on bench)
-        if (!standing) c += 20; else c -= 80;
-        // Shoulder and hip at same height (flat on bench)
-        if (Math.abs(shoulderY - hipY) < 0.12) c += 15;
-        if (Math.abs(shoulderY - hipY) < 0.08) c += 5;
+        // ======= PHASE A: LOCKOUT (arms extended above chest) =======
+        if (horizontal && avgElbow > 155) c += 15;
+        // Arms extended but body is flat
+        if (!standing && avgElbow > 150 && Math.abs(shoulderY - hipY) < 0.12) c += 10;
 
-        // ---- PRESSING SIGNALS ----
-        // Elbows bent (pressing motion)
-        if (avgElbow < 140) c += 10;
-        if (avgElbow < 110) c += 10;
-        if (avgElbow < 80) c += 5;
-        // Shoulders in pressing range
-        if (avgShoulder > 30 && avgShoulder < 110) c += 5;
-        // Elbows symmetric (both arms pressing evenly)
+        // ======= PHASE B: DESCENT (bar lowering to chest) =======
+        if (!standing && avgElbow > 90 && avgElbow < 155) c += 10;
+
+        // ======= PHASE C: BOTTOM (bar on chest, max elbow bend) =======
+        if (!standing && avgElbow < 90) c += 15;
+        if (!standing && avgElbow < 70) c += 10;
+        // Elbows at sides, not flaring (shoulder angle moderate)
+        if (avgShoulder > 30 && avgShoulder < 90 && avgElbow < 100) c += 5;
+
+        // ======= PHASE D: PRESS (pushing bar up from chest) =======
+        if (!standing && avgElbow > 80 && avgElbow < 150) c += 5;
+
+        // ======= UNIVERSAL BENCH SIGNALS (any phase) =======
+        // Body HORIZONTAL (lying flat) — THE defining feature
+        if (horizontal) c += 30;
+        if (horizScore > 0.4) c += 10;
+        if (horizScore > 0.55) c += 10;
+        // NOT standing
+        if (!standing) c += 15; else c -= 80;
+        // Shoulder-hip at same level (flat on bench)
+        if (Math.abs(shoulderY - hipY) < 0.12) c += 10;
+        if (Math.abs(shoulderY - hipY) < 0.07) c += 5;
+        // Elbows bent (pressing)
+        if (avgElbow < 145) c += 5;
+        // Elbows symmetric
         if (elbowAsym < 20) c += 5;
-        // Hands near chest height (pressing up from bench)
-        if (handsRel > -0.1 && handsRel < 0.2) c += 5;
+        // Hands near chest/between shoulders (pressing position)
+        if (handsRel > -0.15 && handsRel < 0.25) c += 3;
+        // Nose above shoulder level (head on bench, looking up)
+        if (noseY < shoulderY) c += 3;
+        // Feet on floor: ankles below hips
+        if (ankleY > hipY) c += 3;
 
-        // ---- HARD CROSS-EXERCISE PENALTIES ----
-        // ANTI-DEADLIFT/SQUAT: if standing upright, this is NOT bench
-        if (standing && torsoAng < 20) c -= 60;
-        // ANTI-DEADLIFT: if forward lean while standing, definitely not bench
-        if (standing && torsoAng > 25) c -= 60;
-        // ANTI-DEADLIFT/SQUAT: if deep knee bend while standing, not bench
-        if (standing && avgKnee < 130) c -= 40;
-        // Arms fully locked = not actively pressing
-        if (avgElbow > 170) c -= 10;
+        // ======= HARD ANTI-DEADLIFT PENALTIES =======
+        if (standing && torsoAng > 20) c -= 70; // standing + leaning = deadlift
+        if (standing && lowHands) c -= 60;       // standing + hands low = deadlift
+        if (standing && armsHangingStraight(landmarks)) c -= 50;
+        // ======= HARD ANTI-SQUAT PENALTIES =======
+        if (standing && torsoAng < 25) c -= 60;  // standing upright = squat
+        if (standing && avgKnee < 140) c -= 50;  // standing + knee bend = squat
+        // Arms locked (not pressing)
+        if (avgElbow > 172) c -= 5;
 
         scores.push({ name: "Bench Press (Flat)", confidence: Math.max(0, c) });
     }
