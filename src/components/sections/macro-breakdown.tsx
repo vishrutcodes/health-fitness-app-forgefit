@@ -118,14 +118,14 @@ export function MacroBreakdown() {
                             </div>
 
                             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                                <Button variant="outline" onClick={addFood} className="border-forge-border text-slate-300 hover:bg-white/5 flex-1">
+                                <Button variant="outline" onClick={addFood} className="border-forge-border text-slate-300 hover:bg-white/5 flex-1 h-11 sm:h-10 text-sm">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Add Another Food
                                 </Button>
                                 <Button
                                     onClick={analyze}
                                     disabled={loading}
-                                    className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0 flex-1"
+                                    className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0 flex-1 h-11 sm:h-10 text-sm sm:text-base"
                                 >
                                     {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Scan className="mr-2 h-5 w-5" />}
                                     {loading ? "Analyzing..." : "Analyze Macros"}
