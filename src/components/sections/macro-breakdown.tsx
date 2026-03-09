@@ -89,9 +89,9 @@ export function MacroBreakdown() {
                         <CardContent>
                             <div className="space-y-3">
                                 {foods.map((food, i) => (
-                                    <div key={i} className="flex gap-3 items-end">
+                                    <div key={i} className="flex gap-2 sm:gap-3 items-end">
                                         <div className="flex-1 space-y-1">
-                                            <Label className="text-slate-300 text-xs">Food</Label>
+                                            <Label className="text-slate-300 text-xs text-left w-full block">Food</Label>
                                             <Input
                                                 placeholder="e.g. Chicken breast"
                                                 value={food.name}
@@ -99,8 +99,8 @@ export function MacroBreakdown() {
                                                 className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange"
                                             />
                                         </div>
-                                        <div className="w-32 space-y-1">
-                                            <Label className="text-slate-300 text-xs">Amount</Label>
+                                        <div className="w-24 sm:w-32 space-y-1">
+                                            <Label className="text-slate-300 text-xs text-left w-full block">Amount</Label>
                                             <Input
                                                 placeholder="e.g. 200g"
                                                 value={food.amount}
@@ -117,7 +117,7 @@ export function MacroBreakdown() {
                                 ))}
                             </div>
 
-                            <div className="mt-4 flex gap-3">
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
                                 <Button variant="outline" onClick={addFood} className="border-forge-border text-slate-300 hover:bg-white/5 flex-1">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Add Another Food
@@ -157,9 +157,9 @@ export function MacroBreakdown() {
                                         <div className="mt-4 space-y-2">
                                             <p className="text-xs font-semibold uppercase text-forge-orange-light tracking-wider">Per-food breakdown</p>
                                             {result.breakdown.map((item, i) => (
-                                                <div key={i} className="flex items-center justify-between rounded-lg bg-slate-900/30 border border-forge-border px-4 py-2.5 text-sm">
+                                                <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg bg-slate-900/30 border border-forge-border px-4 py-2.5 text-sm gap-2">
                                                     <span className="text-white font-medium">{item.food}</span>
-                                                    <div className="flex gap-4 text-xs text-slate-400">
+                                                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
                                                         <span>{item.calories} kcal</span>
                                                         <span className="text-blue-400">{item.protein}g P</span>
                                                         <span className="text-emerald-400">{item.carbs}g C</span>
