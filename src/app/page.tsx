@@ -7,7 +7,6 @@ import { DietArchitect } from "@/components/sections/diet-architect";
 import { MacroBreakdown } from "@/components/sections/macro-breakdown";
 import { RoadmapSection } from "@/components/sections/roadmap";
 import { ExerciseGuide } from "@/components/sections/exercise-guide";
-import { FormAnalyzer } from "@/components/sections/form-analyzer";
 import { WorkoutTimer } from "@/components/sections/workout-timer";
 import { PhasePlanner } from "@/components/sections/phase-planner";
 import { KnowledgeBase } from "@/components/sections/knowledge-base";
@@ -27,7 +26,6 @@ export default function Home() {
         <MacroBreakdown />
         <RoadmapSection />
         <ExerciseGuide />
-        <FormAnalyzer />
         <WorkoutTimer />
         <PhasePlanner />
         <KnowledgeBase />
