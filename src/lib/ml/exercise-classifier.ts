@@ -216,7 +216,7 @@ export async function classifyExercise(landmarks: PoseLandmark[]): Promise<Class
     }
 
     // Log for debugging
-    console.log(`[MLClassifier] ${exercise} (${(maxProb * 100).toFixed(1)}%) | DL:${probs['Deadlift']}% SQ:${probs['Squat']}% BP:${probs['Bench Press']}% PU:${probs['Push-up']}% NO:${probs['No Exercise']}%`);
+    console.log(`[MLClassifier] ${exercise} (${(maxProb * 100).toFixed(1)}%) | DL:${probs['Deadlift']}% SQ:${probs['Squat']}% BP:${probs['Bench Press']}% PU:${probs['Push-up']}% OHP:${probs['Dumbbell Overhead Press']}% PULL:${probs['Pull-Up']}% NO:${probs['No Exercise']}%`);
 
     // Build feature display
     const featureDisplay: Record<string, number> = {};
@@ -299,6 +299,20 @@ export function analyzeForm(
         if (avgElbow < 75) { positives.push('✅ Great range of motion — chest close to floor.'); }
         else if (avgElbow > 120) { corrections.push('📐 Not deep enough — lower chest closer to the floor.'); score -= 1; }
         if (elbowAsym > 20) { corrections.push('⚠️ Uneven press — one arm bending more than the other.'); score -= 1; }
+    }
+
+    if (exercise === 'Dumbbell Overhead Press') {
+        if (avgElbow < 70) { positives.push('✅ Great range of motion — lowering weights well.'); }
+        else if (avgElbow > 110) { corrections.push('📐 Not deep enough — lower dumbbells to shoulder level.'); score -= 1; }
+        if (elbowAsym > 20) { corrections.push('⚠️ Uneven press — one arm extending more/faster.'); score -= 1; }
+        if (torsoAng > 20) { corrections.push('⚠️ Leaning back too much — brace core to protect lower back.'); score -= 1; }
+    }
+
+    if (exercise === 'Pull-Up') {
+        if (avgElbow > 150) { positives.push('✅ Good full extension at the bottom.'); }
+        if (avgElbow < 70) { positives.push('✅ Chin over bar — excellent pulling depth.'); }
+        else if (avgElbow > 110) { corrections.push('📐 Pull higher — try to get your chin over the bar.'); score -= 1; }
+        if (elbowAsym > 20) { corrections.push('⚠️ Uneven pull — pulling more with one side.'); score -= 1; }
     }
 
     if (corrections.length === 0 && positives.length < 2) {

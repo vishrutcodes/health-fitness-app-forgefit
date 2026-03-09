@@ -24,7 +24,7 @@
 import * as tf from '@tensorflow/tfjs';
 
 // Exercise class labels
-export const EXERCISE_CLASSES = ['Deadlift', 'Squat', 'Bench Press', 'Push-up', 'No Exercise'] as const;
+export const EXERCISE_CLASSES = ['Deadlift', 'Squat', 'Bench Press', 'Push-up', 'Dumbbell Overhead Press', 'Pull-Up', 'No Exercise'] as const;
 export type ExerciseClass = typeof EXERCISE_CLASSES[number];
 
 // Feature names for debugging/display
@@ -141,7 +141,39 @@ const NO_EXERCISE_PROFILE: ExerciseProfile = {
     symmetry: { min: 0.8, max: 1.0, mean: 0.92, std: 0.05 },
 };
 
-const PROFILES = [DEADLIFT_PROFILE, SQUAT_PROFILE, BENCH_PROFILE, PUSHUP_PROFILE, NO_EXERCISE_PROFILE];
+// Dumbbell Overhead Press: Upright torso, hands pushing above head
+const DUMBBELL_PRESS_PROFILE: ExerciseProfile = {
+    kneeAngle: { min: 160, max: 180, mean: 175, std: 5 },   // standing mostly
+    elbowAngle: { min: 45, max: 180, mean: 110, std: 40 },   // pressing range
+    hipAngle: { min: 80, max: 180, mean: 170, std: 30 },   // standing or seated (90)
+    shoulderAngle: { min: 90, max: 180, mean: 140, std: 30 },   // arms raised high
+    torsoAngle: { min: 0, max: 25, mean: 8, std: 8 },    // mostly upright
+    hipKneeRatio: { min: 0.5, max: 1.1, mean: 0.97, std: 0.15 },
+    stanceWidth: { min: 0.1, max: 0.3, mean: 0.2, std: 0.05 },
+    handHeight: { min: 0.1, max: 0.7, mean: 0.4, std: 0.2 },  // hands ABOVE shoulders
+    isHorizontal: { min: 0, max: 0.1, mean: 0.02, std: 0.02 }, // NOT horizontal
+    armStraightness: { min: 0.1, max: 1.0, mean: 0.6, std: 0.25 },
+    wristBelowHip: { min: 0.0, max: 0.0, mean: 0.0, std: 0.0 }, // wrists high
+    symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+};
+
+// Pull-Up: Hanging, arms pulling body up, hands above head
+const PULLUP_PROFILE: ExerciseProfile = {
+    kneeAngle: { min: 90, max: 180, mean: 150, std: 30 },   // legs can be straight or bent
+    elbowAngle: { min: 30, max: 180, mean: 100, std: 40 },   // pulling range
+    hipAngle: { min: 130, max: 180, mean: 165, std: 15 },   // body mostly straight
+    shoulderAngle: { min: 120, max: 180, mean: 150, std: 20 },   // arms raised high
+    torsoAngle: { min: 0, max: 30, mean: 12, std: 8 },    // mostly upright, slight lean back
+    hipKneeRatio: { min: 0.8, max: 1.5, mean: 1.1, std: 0.2 },
+    stanceWidth: { min: 0.0, max: 0.15, mean: 0.08, std: 0.04 }, // feet close
+    handHeight: { min: 0.2, max: 0.8, mean: 0.5, std: 0.2 },  // hands HIGH ABOVE shoulders
+    isHorizontal: { min: 0, max: 0.1, mean: 0.03, std: 0.03 }, // NOT horizontal
+    armStraightness: { min: 0.1, max: 1.0, mean: 0.5, std: 0.3 },
+    wristBelowHip: { min: 0.0, max: 0.0, mean: 0.0, std: 0.0 }, // wrists high
+    symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+};
+
+const PROFILES = [DEADLIFT_PROFILE, SQUAT_PROFILE, BENCH_PROFILE, PUSHUP_PROFILE, DUMBBELL_PRESS_PROFILE, PULLUP_PROFILE, NO_EXERCISE_PROFILE];
 
 /**
  * Generate a single synthetic sample from a Gaussian distribution

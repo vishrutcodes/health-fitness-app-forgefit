@@ -197,7 +197,7 @@ export function FormAnalyzer() {
                     score: 0,
                     corrections: [
                         "❌ The ML model could not classify an exercise in this video.",
-                        "📹 Upload a clear video of a deadlift, squat, bench press, or push-up.",
+                        "📹 Upload a clear video of a deadlift, squat, bench press, push-up, dumbbell overhead press, or pull-up.",
                         "🧠 The neural network needs to see clear joint movements."
                     ],
                     positives: [],
@@ -585,7 +585,7 @@ export function FormAnalyzer() {
                 <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-8 text-center">
                     <p className="text-sm text-slate-500 mb-3">Exercises the ML model can classify:</p>
                     <div className="flex flex-wrap justify-center gap-2">
-                        {["Deadlift", "Squat (Barbell)", "Bench Press (Flat)", "Push-up"].map(ex => (
+                        {["Deadlift", "Squat (Barbell)", "Bench Press (Flat)", "Push-up", "Overhead Press", "Pull-Up"].map(ex => (
                             <Badge key={ex} className="bg-slate-800/50 text-slate-400 border-forge-border hover:text-forge-orange transition-colors">{ex}</Badge>
                         ))}
                     </div>
