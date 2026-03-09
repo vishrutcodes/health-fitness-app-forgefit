@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Loader2, Brain, Video, AlertTriangle, CheckCircle2, BarChart3, Cpu, ChevronDown } from "lucide-react";
+import { Upload, Loader2, Brain, Video, AlertTriangle, CheckCircle2, BarChart3, Cpu, ChevronDown, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +56,15 @@ export function FormAnalyzer() {
         const f = e.dataTransfer.files[0];
         if (f) handleFile(f);
     }, [handleFile]);
+
+    const handleReset = useCallback(() => {
+        setFile(null);
+        if (preview) URL.revokeObjectURL(preview);
+        setPreview(null);
+        setResult(null);
+        setError("");
+        setStatusMsg("");
+    }, [preview]);
 
     /* ──────────────────── MAIN ANALYSIS ──────────────────── */
     const analyzeVideo = useCallback(async () => {
@@ -331,23 +340,36 @@ export function FormAnalyzer() {
 
                                 {/* Analyze button */}
                                 {file && (
-                                    <Button
-                                        onClick={analyzeVideo}
-                                        disabled={analyzing}
-                                        className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0 h-12 text-base"
-                                    >
-                                        {analyzing ? (
-                                            <span className="flex items-center gap-2">
-                                                <Loader2 className="h-5 w-5 animate-spin" />
-                                                {statusMsg || "Analyzing..."}
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-2">
-                                                <Brain className="h-5 w-5" />
-                                                Analyze with Neural Network
-                                            </span>
+                                    <div className="space-y-3">
+                                        <Button
+                                            onClick={analyzeVideo}
+                                            disabled={analyzing}
+                                            className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold border-0 h-12 text-base"
+                                        >
+                                            {analyzing ? (
+                                                <span className="flex items-center gap-2">
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    {statusMsg || "Analyzing..."}
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-2">
+                                                    <Brain className="h-5 w-5" />
+                                                    Analyze with Neural Network
+                                                </span>
+                                            )}
+                                        </Button>
+
+                                        {!analyzing && (
+                                            <Button
+                                                onClick={handleReset}
+                                                variant="ghost"
+                                                className="w-full text-slate-400 hover:bg-slate-800/50 hover:text-white"
+                                            >
+                                                <RefreshCw className="h-4 w-4 mr-2" />
+                                                Choose Different Video
+                                            </Button>
                                         )}
-                                    </Button>
+                                    </div>
                                 )}
 
                                 {/* ML Pipeline info */}
@@ -543,6 +565,14 @@ export function FormAnalyzer() {
                                                     </div>
                                                 )}
                                             </div>
+
+                                            <Button
+                                                onClick={handleReset}
+                                                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold h-12 text-base mt-2 border border-slate-700"
+                                            >
+                                                <RefreshCw className="h-5 w-5 mr-2" />
+                                                Analyze Another Video
+                                            </Button>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
