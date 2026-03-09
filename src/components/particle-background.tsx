@@ -52,7 +52,7 @@ export function ParticleBackground() {
                     density: {
                         enable: true,
                     },
-                    value: 200,
+                    value: 220,
                 },
                 opacity: {
                     value: { min: 0.15, max: 0.5 },
