@@ -5,8 +5,8 @@ import { Flame } from "lucide-react";
 const platformLinks = [
     { label: "Calculator", href: "#calculator" },
     { label: "Fitness Toolkit", href: "#toolkit" },
-    { label: "Diet Architect", href: "#diet" },
-    { label: "Macro Breakdown", href: "#macros" },
+    { label: "Community", href: "#community" },
+    { label: "Pro Features", href: "#pro" },
     { label: "Exercise Guide", href: "#exercise-guide" },
 ];
 

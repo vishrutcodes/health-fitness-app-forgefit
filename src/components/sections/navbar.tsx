@@ -12,7 +12,6 @@ const navLinks = [
     { label: "Home", href: "#home" },
     { label: "Calculator", href: "#calculator" },
     { label: "Toolkit", href: "#toolkit" },
-    { label: "Diet Plan", href: "#diet" },
     { label: "Roadmap", href: "#roadmap" },
     { label: "Progress", href: "/progress" },
     { label: "PRs", href: "/prs" },
