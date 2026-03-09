@@ -16,12 +16,12 @@ export async function POST(req: NextRequest) {
                     role: "system",
                     content: `You are a highly accurate nutrition analysis AI. Given a list of foods, estimate the total macronutrient breakdown for the exact specified quantity. 
 CRITICAL RULES FOR QUANTITIES:
-1. Prioritize the 'amount' field to determine the serving size.
-2. If the food name contains a count (e.g., "6 boiled eggs") AND the amount is a weight (e.g., "50g"), you MUST assume the weight is PER ITEM and multiply them (6 eggs * 50g = 300g total). Calculate macros for the TOTAL multiplied weight.
-3. If only a count is given in the amount (e.g., "2"), calculate macros for 2 standard items.
+1. Prioritize the 'amount' field (e.g. "50g", "1 cup") to determine the exact serving size to calculate for.
+2. If the food name contains a count (e.g., "6 boiled eggs") AND the amount is a weight (e.g., "50g"), you MUST assume the weight is PER ITEM and multiply them (6 eggs * 50g = 300g total).
+3. PROPORTIONAL SCALING: You MUST mathematically scale your base knowledge to the exact weight provided. A standard large boiled egg is ~50g and contains ~6.3g of protein. If the user asks for 50g of boiled egg, you MUST return ~6.3g. Do not return 12.5g (which is for 100g). If the user asks for 200g of chicken, scale the 100g values by 2.
 Return ONLY valid JSON in this exact format, no extra text:
 {"protein": number, "carbs": number, "fat": number, "fiber": number, "breakdown": [{"food": "name", "protein": number, "carbs": number, "fat": number}]}
-All values should be reasonable estimates in grams. Do not include calories.`,
+All values should be accurate estimates in grams. Do not include calories.`,
                 },
                 {
                     role: "user",
