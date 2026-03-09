@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
 CRITICAL RULES FOR QUANTITIES:
 1. Prioritize the 'amount' field (e.g. "50g", "1 cup") to determine the exact serving size to calculate for.
 2. If the food name contains a count (e.g., "6 boiled eggs") AND the amount is a weight (e.g., "50g"), you MUST assume the weight is PER ITEM and multiply them (6 eggs * 50g = 300g total).
-3. PROPORTIONAL SCALING: You MUST mathematically scale your base knowledge to the exact weight provided. A standard large boiled egg is ~50g and contains ~6.3g of protein. If the user asks for 50g of boiled egg, you MUST return ~6.3g. Do not return 12.5g (which is for 100g). If the user asks for 200g of chicken, scale the 100g values by 2.
+3. If the food name does NOT contain a count (e.g. "soya chunks" or "chicken breast"), then the amount field is the TOTAL weight. Calculate for that exact total weight.
+4. PROPORTIONAL SCALING: You MUST mathematically scale your base knowledge to the exact weight provided. A standard large boiled egg is ~50g and contains ~6.3g of protein. If the user asks for 50g of boiled egg, you MUST return ~6.3g. Do not return 12.5g (which is for 100g). If the user asks for 200g of chicken, scale the 100g values by 2.
 Return ONLY valid JSON in this exact format, no extra text:
 {"protein": number, "carbs": number, "fat": number, "fiber": number, "breakdown": [{"food": "name", "protein": number, "carbs": number, "fat": number}]}
 All values should be accurate estimates in grams. Do not include calories.`,
@@ -28,13 +29,14 @@ All values should be accurate estimates in grams. Do not include calories.`,
                     content: `Analyze the macros for: ${foodList}`,
                 },
             ],
+            response_format: { type: "json_object" },
             temperature: 0.1,
             max_tokens: 512,
         });
 
         const text = completion.choices[0]?.message?.content || "";
         console.log("RAW LLM OUTPUT:", text);
-        // Extract JSON from the response
+        // Extract JSON from the response (find first { and last })
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             const data = JSON.parse(jsonMatch[0]);

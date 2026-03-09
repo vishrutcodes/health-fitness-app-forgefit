@@ -108,7 +108,7 @@ export function MacroBreakdown() {
                                             />
                                         </div>
                                         <div className="w-[80px] sm:w-[100px] shrink-0 space-y-1">
-                                            <Label className="text-slate-300 text-xs text-left w-full block text-nowrap truncate">Qty (Items)</Label>
+                                            <Label className="text-slate-300 text-xs text-left w-full block text-nowrap truncate">Qty (Optional)</Label>
                                             <Input
                                                 type="number"
                                                 min="1"
@@ -118,10 +118,10 @@ export function MacroBreakdown() {
                                                 className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange"
                                             />
                                         </div>
-                                        <div className="w-[100px] sm:w-[120px] shrink-0 space-y-1">
-                                            <Label className="text-slate-300 text-xs text-left w-full block text-nowrap truncate">Grams per item</Label>
+                                        <div className="w-[100px] sm:w-[124px] shrink-0 space-y-1">
+                                            <Label className="text-slate-300 text-xs text-left w-full block text-nowrap truncate">Amount / Weight</Label>
                                             <Input
-                                                placeholder="e.g. 50g"
+                                                placeholder="e.g. 100g"
                                                 value={food.amount}
                                                 onChange={(e) => updateFood(i, "amount", e.target.value)}
                                                 className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange"
