@@ -31,7 +31,9 @@ interface Phase {
 interface AdvancedRoadmap {
     overview: string;
     dailyProtocol: DailyProtocol;
+    nutritionStaples: string[];
     supplementStack: string[];
+    specializedProtocols: { title: string; description: string }[];
     phases: Phase[];
 }
 
@@ -201,17 +203,48 @@ export function RoadmapSection() {
                                 </div>
                             </div>
 
-                            <div className="grid md:grid-cols-3 gap-8">
-                                {/* Supplement Stack */}
-                                <div className="md:col-span-1">
-                                    <h3 className="text-xl font-bold text-white mb-4">Supplement Stack</h3>
-                                    <div className="bg-slate-900/60 border border-forge-border rounded-xl p-5 space-y-4 h-full">
-                                        {roadmap.supplementStack.map((supp, i) => (
-                                            <div key={i} className="flex gap-3 items-start pb-4 border-b border-white/5 last:border-0 last:pb-0">
-                                                <div className="mt-0.5 h-2 w-2 rounded-full bg-forge-orange shrink-0"></div>
-                                                <p className="text-sm text-slate-300">{supp}</p>
+                            {/* Specialized Protocols */}
+                            {roadmap.specializedProtocols && roadmap.specializedProtocols.length > 0 && (
+                                <div>
+                                    <h3 className="text-xl font-bold text-white mb-4">Specialized Directives</h3>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        {roadmap.specializedProtocols.map((protocol, i) => (
+                                            <div key={i} className="bg-slate-900/60 border border-forge-orange/20 p-5 rounded-xl border-l-2 border-l-forge-orange">
+                                                <h4 className="text-forge-orange font-bold text-lg mb-2">{protocol.title}</h4>
+                                                <p className="text-slate-300 text-sm leading-relaxed">{protocol.description}</p>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid md:grid-cols-3 gap-8">
+                                {/* Nutrition & Supplements Col */}
+                                <div className="md:col-span-1 space-y-6">
+                                    {/* Nutrition Staples */}
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white mb-4">Nutrition Staples</h3>
+                                        <div className="bg-slate-900/60 border border-forge-border rounded-xl p-5 space-y-4">
+                                            {roadmap.nutritionStaples.map((food, i) => (
+                                                <div key={i} className="flex gap-3 items-start pb-4 border-b border-white/5 last:border-0 last:pb-0">
+                                                    <div className="mt-0.5 h-2 w-2 rounded-full bg-emerald-400 shrink-0"></div>
+                                                    <p className="text-sm text-slate-300">{food}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Supplement Stack */}
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white mb-4">Supplement Stack</h3>
+                                        <div className="bg-slate-900/60 border border-forge-border rounded-xl p-5 space-y-4">
+                                            {roadmap.supplementStack.map((supp, i) => (
+                                                <div key={i} className="flex gap-3 items-start pb-4 border-b border-white/5 last:border-0 last:pb-0">
+                                                    <div className="mt-0.5 h-2 w-2 rounded-full bg-forge-orange shrink-0"></div>
+                                                    <p className="text-sm text-slate-300">{supp}</p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
 
