@@ -147,7 +147,7 @@ export function DietArchitect() {
                                                 <div className="bg-slate-900/50 px-5 py-3 border-b border-forge-border flex justify-between items-center">
                                                     <h3 className="font-bold text-white text-lg">Meal {meal.id}</h3>
                                                     <span className="text-xs font-mono text-slate-400 bg-black/50 px-2 py-1 rounded-md">
-                                                        {meal.targetCalories} kcal | {meal.targetProtein}P {meal.targetCarbs}C {meal.targetFat}F
+                                                        {meal.targetCalories} kcal | {meal.targetProtein}g Protein, {meal.targetCarbs}g Carbs, {meal.targetFat}g Fat
                                                     </span>
                                                 </div>
                                                 <div className="p-2 space-y-2">
@@ -160,11 +160,11 @@ export function DietArchitect() {
                                                                         {food.weightGrams}g
                                                                     </span>
                                                                 </div>
-                                                                <div className="flex items-center gap-3 mt-1 text-xs font-mono">
-                                                                    <span className="text-blue-400">{food.protein}P</span>
-                                                                    <span className="text-emerald-400">{food.carbs}C</span>
-                                                                    <span className="text-amber-400">{food.fat}F</span>
-                                                                    <span className="text-slate-500">• {food.calories}kcal</span>
+                                                                <div className="flex flex-wrap items-center gap-3 mt-1 text-xs font-mono">
+                                                                    <span className="text-blue-400">{food.protein}g Protein</span>
+                                                                    <span className="text-emerald-400">{food.carbs}g Carbs</span>
+                                                                    <span className="text-amber-400">{food.fat}g Fat</span>
+                                                                    <span className="text-slate-500">• {food.calories} kcal</span>
                                                                 </div>
                                                             </div>
                                                             <Button
