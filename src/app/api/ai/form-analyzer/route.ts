@@ -29,7 +29,7 @@ TASK: Identify the exercise and analyze the form.
 
 You MUST respond in EXACTLY this JSON format, nothing else:
 {
-  "exercise": "<one of: Squat, Deadlift, Bench Press, Push-up, Dumbbell Overhead Press, Pull-Up, Barbell Row, Lunge, Dumbbell Lateral Raise, No Exercise>",
+  "exercise": "<one of: Squat, Deadlift, Bench Press, Push-up, Dumbbell Overhead Press, Pull-Up, Barbell Row, Lunge, Dumbbell Lateral Raise, Bicep Curl, No Exercise>",
   "confidence": <number 0-100>,
   "form_score": <number 1-10>,
   "corrections": ["<correction 1>", "<correction 2>"],
@@ -45,10 +45,12 @@ RULES:
 - Push-up: person face down, pushing body up from floor
 - Dumbbell Overhead Press: standing/seated, pressing weights overhead
 - Pull-Up: hanging from bar, pulling body upward
-- Dumbbell Lateral Raise: standing with dumbbells at sides, raising arms outward/sideways to shoulder height, slight elbow bend
+- Dumbbell Lateral Raise: standing, raising arms OUTWARD and sideways away from body to shoulder height. Elbows are only slightly bent, locked in place.
+- Bicep Curl: standing/seated, holding dumbbells/barbell, bending arms AT THE ELBOW to curl weight UP toward shoulders. Upper arm stays still.
 - If the person is clearly performing a gym exercise, identify it. Do NOT say "No Exercise" unless there is genuinely no exercise happening.
 - For form analysis, provide specific, actionable corrections and positives based on what you see.
 - For Dumbbell Lateral Raise, check: controlled tempo, slight elbow bend, arms not going above shoulder height, no excessive body swinging/momentum, shoulders not shrugging up
+- For Bicep Curl, check: elbows pinned to sides, no body swing/momentum, full range of motion
 - Respond with ONLY the JSON, no markdown, no backticks, no explanation.`,
                         },
                         ...imageContent,
