@@ -6,7 +6,6 @@
 
 A premium, production-grade fitness web application combining **artificial intelligence**, **real-time data visualization**, and **interactive fitness tools** into a single, beautifully designed platform. ForgeFit empowers users to generate personalized workout plans, analyze nutrition on the fly, track body composition changes, log personal records, and receive real-time coaching — all powered by **Groq's LLaMA 3.3 70B** for text AI, **Groq's Llama 4 Scout Vision** for exercise classification from video, and **MediaPipe Pose Landmarker** for skeleton detection and joint angle analysis.
 
-[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-ForgeFit-FF6B2B?style=for-the-badge)](https://health-fitness-app-forgefit.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/vishrutcodes/health-fitness-app-forgefit)
 [![Next.js](https://img.shields.io/badge/Next.js-16.1.6-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
@@ -82,7 +81,6 @@ ForgeFit solves all three problems by combining:
 
 | | Details |
 |---|---|
-| **Live URL** | [health-fitness-app-forgefit.vercel.app](https://health-fitness-app-forgefit.vercel.app) |
 | **Hosting** | Vercel (Edge Network, automatic HTTPS, global CDN) |
 | **CI/CD** | GitHub → Vercel (auto-deploy on every push to `main`) |
 | **Region** | Auto-detected (served from nearest Vercel Edge node) |
