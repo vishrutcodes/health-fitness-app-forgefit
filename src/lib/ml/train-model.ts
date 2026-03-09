@@ -24,7 +24,7 @@
 import * as tf from '@tensorflow/tfjs';
 
 // Exercise class labels
-export const EXERCISE_CLASSES = ['Deadlift', 'Squat', 'Bench Press', 'No Exercise'] as const;
+export const EXERCISE_CLASSES = ['Deadlift', 'Squat', 'Bench Press', 'Push-up', 'No Exercise'] as const;
 export type ExerciseClass = typeof EXERCISE_CLASSES[number];
 
 // Feature names for debugging/display
@@ -109,6 +109,22 @@ const BENCH_PROFILE: ExerciseProfile = {
     symmetry: { min: 0.65, max: 1.0, mean: 0.85, std: 0.10 },
 };
 
+// Push-up: Horizontal body, straight torso, bending elbows
+const PUSHUP_PROFILE: ExerciseProfile = {
+    kneeAngle: { min: 150, max: 180, mean: 170, std: 10 },   // legs straight
+    elbowAngle: { min: 50, max: 180, mean: 115, std: 40 },   // pressing range
+    hipAngle: { min: 140, max: 180, mean: 165, std: 10 },   // straight bodyline
+    shoulderAngle: { min: 40, max: 100, mean: 70, std: 20 },   // pressing
+    torsoAngle: { min: 55, max: 85, mean: 70, std: 10 },    // angled from floor
+    hipKneeRatio: { min: 0.9, max: 1.1, mean: 0.97, std: 0.05 },
+    stanceWidth: { min: 0.05, max: 0.25, mean: 0.15, std: 0.05 },
+    handHeight: { min: -0.4, max: 0.0, mean: -0.2, std: 0.1 },  // hands below shoulders
+    isHorizontal: { min: 0.5, max: 1.0, mean: 0.85, std: 0.1 }, // HORIZONTALish
+    armStraightness: { min: 0.1, max: 1.0, mean: 0.55, std: 0.25 },
+    wristBelowHip: { min: 0.6, max: 1.0, mean: 0.85, std: 0.1 },
+    symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+};
+
 // No Exercise / Standing idle: everything relaxed
 const NO_EXERCISE_PROFILE: ExerciseProfile = {
     kneeAngle: { min: 155, max: 180, mean: 170, std: 6 },    // legs straight
@@ -125,7 +141,7 @@ const NO_EXERCISE_PROFILE: ExerciseProfile = {
     symmetry: { min: 0.8, max: 1.0, mean: 0.92, std: 0.05 },
 };
 
-const PROFILES = [DEADLIFT_PROFILE, SQUAT_PROFILE, BENCH_PROFILE, NO_EXERCISE_PROFILE];
+const PROFILES = [DEADLIFT_PROFILE, SQUAT_PROFILE, BENCH_PROFILE, PUSHUP_PROFILE, NO_EXERCISE_PROFILE];
 
 /**
  * Generate a single synthetic sample from a Gaussian distribution

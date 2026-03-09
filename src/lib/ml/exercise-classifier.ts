@@ -211,7 +211,7 @@ export async function classifyExercise(landmarks: PoseLandmark[]): Promise<Class
     }
 
     // Log for debugging
-    console.log(`[MLClassifier] ${exercise} (${(maxProb * 100).toFixed(1)}%) | DL:${probs['Deadlift']}% SQ:${probs['Squat']}% BP:${probs['Bench Press']}% NO:${probs['No Exercise']}%`);
+    console.log(`[MLClassifier] ${exercise} (${(maxProb * 100).toFixed(1)}%) | DL:${probs['Deadlift']}% SQ:${probs['Squat']}% BP:${probs['Bench Press']}% PU:${probs['Push-up']}% NO:${probs['No Exercise']}%`);
 
     // Build feature display
     const featureDisplay: Record<string, number> = {};
@@ -286,6 +286,14 @@ export function analyzeForm(
         else { positives.push('✅ Good pressing depth.'); }
         if (elbowAsym > 20) { corrections.push('⚠️ Uneven press — one arm doing more work.'); score -= 1; }
         else { positives.push('✅ Symmetric pressing — both arms even.'); }
+    }
+
+    if (exercise === 'Push-up') {
+        if (avgHip < 140) { corrections.push('⚠️ Hips sagging or pike position — keep body in a straight line.'); score -= 2; }
+        else { positives.push('✅ Good straight bodyline.'); }
+        if (avgElbow < 75) { positives.push('✅ Great range of motion — chest close to floor.'); }
+        else if (avgElbow > 120) { corrections.push('📐 Not deep enough — lower chest closer to the floor.'); score -= 1; }
+        if (elbowAsym > 20) { corrections.push('⚠️ Uneven press — one arm bending more than the other.'); score -= 1; }
     }
 
     if (corrections.length === 0 && positives.length < 2) {
