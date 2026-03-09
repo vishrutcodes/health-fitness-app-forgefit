@@ -52,7 +52,7 @@ export function AiCoachDialog() {
             {/* Floating trigger button */}
             <button
                 onClick={() => setOpen(true)}
-                className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-forge-orange to-forge-orange-light text-white shadow-xl shadow-forge-orange/30 hover:shadow-forge-orange/50 transition-all hover:scale-105"
+                className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-forge-orange to-forge-orange-light text-white shadow-xl shadow-forge-orange/30 hover:shadow-forge-orange/50 transition-all hover:scale-105"
             >
                 <Flame className="h-6 w-6" />
             </button>
@@ -64,7 +64,7 @@ export function AiCoachDialog() {
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col rounded-2xl border border-forge-border bg-[#0c1118] shadow-2xl shadow-black/50 overflow-hidden"
+                        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-[500px] max-h-[80vh] w-[calc(100vw-2rem)] sm:h-[520px] sm:w-[380px] sm:max-h-none flex-col rounded-2xl border border-forge-border bg-[#0c1118] shadow-2xl shadow-black/50 overflow-hidden"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-forge-border bg-forge-surface px-4 py-3">
