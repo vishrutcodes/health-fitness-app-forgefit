@@ -19,6 +19,12 @@
  * 10. armStraightness  - How straight the arms are (0-1)
  * 11. wristBelowHip    - Whether wrists are below hip level (0/1)
  * 12. symmetry         - Overall bilateral symmetry score (0-1)
+ * 13. handDistToHip    - Distance from hands to hips (differentiates bench vs squat vs deadlift)
+ * 14. shoulderHipKneePos- Distance between shoulders X and hips X (forward lean structural metric)
+ * 15. handsInFront     - Are hands in front of the body (e.g. at chest/ground vs behind neck)
+ * 16. ankleToKneeLean  - Shin angle/lean (squat vs deadlift discriminator)
+ * 17. handDistToKnee   - Hands position relative to knees (deadlift hands are AT knees, squats are high)
+ * 18. headPosition     - Head height relative to shoulders (posture)
  */
 
 import * as tf from '@tensorflow/tfjs';
@@ -31,7 +37,9 @@ export type ExerciseClass = typeof EXERCISE_CLASSES[number];
 export const FEATURE_NAMES = [
     'Knee Angle', 'Elbow Angle', 'Hip Angle', 'Shoulder Angle',
     'Torso Angle', 'Hip-Knee Ratio', 'Stance Width', 'Hand Height',
-    'Is Horizontal', 'Arm Straightness', 'Wrist Below Hip', 'Symmetry'
+    'Is Horizontal', 'Arm Straightness', 'Wrist Below Hip', 'Symmetry',
+    'Hand-to-Hip Dist', 'Shoulder-Hip Lean', 'Hands In Front',
+    'Shin Angle', 'Hand-to-Knee Dist', 'Head Position'
 ] as const;
 
 /**
@@ -59,6 +67,12 @@ interface ExerciseProfile {
     armStraightness: FeatureRange;
     wristBelowHip: FeatureRange;
     symmetry: FeatureRange;
+    handDistToHip: FeatureRange;
+    shoulderHipKneePos: FeatureRange;
+    handsInFront: FeatureRange;
+    ankleToKneeLean: FeatureRange;
+    handDistToKnee: FeatureRange;
+    headPosition: FeatureRange;
 }
 
 // Deadlift: Forward lean, straight arms, hands near ground, hip-dominant hinge
@@ -75,6 +89,12 @@ const DEADLIFT_PROFILE: ExerciseProfile = {
     armStraightness: { min: 0.7, max: 1.0, mean: 0.9, std: 0.08 },  // arms straight
     wristBelowHip: { min: 0.5, max: 1.0, mean: 0.8, std: 0.15 },  // wrists low
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+    handDistToHip: { min: 0.2, max: 0.6, mean: 0.4, std: 0.1 }, // hands reach past hips down to shins
+    shoulderHipKneePos: { min: 0.3, max: 0.8, mean: 0.5, std: 0.15 }, // shoulders way in front of hips
+    handsInFront: { min: 0.5, max: 1.0, mean: 0.8, std: 0.1 }, // hands fall straight down in front
+    ankleToKneeLean: { min: 0.6, max: 1.0, mean: 0.85, std: 0.1 }, // Vertical shins in deadlift
+    handDistToKnee: { min: 0.0, max: 0.2, mean: 0.05, std: 0.05 }, // Hands are constantly passing perfectly in front of knees
+    headPosition: { min: 0.5, max: 1.0, mean: 0.8, std: 0.1 }
 };
 
 // Squat: Upright torso, deep knee bend, hip-knee co-flexion, bar on back
@@ -91,6 +111,12 @@ const SQUAT_PROFILE: ExerciseProfile = {
     armStraightness: { min: 0.1, max: 0.65, mean: 0.35, std: 0.15 }, // arms bent on bar
     wristBelowHip: { min: 0.0, max: 0.3, mean: 0.0, std: 0.1 },  // wrists up
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+    handDistToHip: { min: 0.4, max: 0.8, mean: 0.6, std: 0.1 }, // hands high on back, far from hips
+    shoulderHipKneePos: { min: 0.0, max: 0.3, mean: 0.1, std: 0.1 }, // torso mostly vertical, shoulders stacked over hips
+    handsInFront: { min: 0.0, max: 0.3, mean: 0.1, std: 0.1 }, // hands behind neck holding barbell
+    ankleToKneeLean: { min: 0.2, max: 0.7, mean: 0.4, std: 0.15 }, // Knees travel forward substantially
+    handDistToKnee: { min: 0.5, max: 0.9, mean: 0.7, std: 0.1 }, // Hands high up, nowhere near knees
+    headPosition: { min: 0.6, max: 1.0, mean: 0.85, std: 0.1 }
 };
 
 // Bench Press: Horizontal body, arms pressing, lying on bench
@@ -107,6 +133,12 @@ const BENCH_PROFILE: ExerciseProfile = {
     armStraightness: { min: 0.1, max: 0.85, mean: 0.45, std: 0.22 },
     wristBelowHip: { min: 0.0, max: 0.3, mean: 0.0, std: 0.1 },
     symmetry: { min: 0.65, max: 1.0, mean: 0.85, std: 0.10 },
+    handDistToHip: { min: 0.3, max: 0.8, mean: 0.55, std: 0.1 },
+    shoulderHipKneePos: { min: 0.7, max: 1.0, mean: 0.9, std: 0.1 }, // horizontal, shoulders and hips are parallel to ground
+    handsInFront: { min: 0.7, max: 1.0, mean: 0.9, std: 0.1 }, // pressing up into space
+    ankleToKneeLean: { min: 0.3, max: 0.8, mean: 0.5, std: 0.15 },
+    handDistToKnee: { min: 0.4, max: 0.9, mean: 0.6, std: 0.1 },
+    headPosition: { min: 0.0, max: 0.3, mean: 0.1, std: 0.1 } // head resting flat on bench
 };
 
 // Push-up: Horizontal body, straight torso, bending elbows
@@ -123,6 +155,12 @@ const PUSHUP_PROFILE: ExerciseProfile = {
     armStraightness: { min: 0.1, max: 1.0, mean: 0.55, std: 0.25 },
     wristBelowHip: { min: 0.0, max: 1.0, mean: 0.5, std: 0.3 },
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+    handDistToHip: { min: 0.3, max: 0.6, mean: 0.45, std: 0.1 },
+    shoulderHipKneePos: { min: 0.7, max: 1.0, mean: 0.9, std: 0.1 }, // parallel
+    handsInFront: { min: 0.7, max: 1.0, mean: 0.85, std: 0.1 }, // pressing floor
+    ankleToKneeLean: { min: 0.7, max: 1.0, mean: 0.9, std: 0.1 }, // legs straight back
+    handDistToKnee: { min: 0.5, max: 0.9, mean: 0.7, std: 0.1 }, // hands at shoulders, knees far back
+    headPosition: { min: 0.2, max: 0.6, mean: 0.4, std: 0.1 }
 };
 
 // No Exercise / Standing idle: everything relaxed
@@ -139,6 +177,12 @@ const NO_EXERCISE_PROFILE: ExerciseProfile = {
     armStraightness: { min: 0.65, max: 1.0, mean: 0.85, std: 0.10 },
     wristBelowHip: { min: 0.3, max: 0.8, mean: 0.5, std: 0.15 },
     symmetry: { min: 0.8, max: 1.0, mean: 0.92, std: 0.05 },
+    handDistToHip: { min: 0.0, max: 0.2, mean: 0.1, std: 0.05 }, // hands idle at hips
+    shoulderHipKneePos: { min: 0.0, max: 0.1, mean: 0.05, std: 0.03 }, // stacked standing perfectly straight
+    handsInFront: { min: 0.0, max: 0.3, mean: 0.1, std: 0.1 }, // hands at side
+    ankleToKneeLean: { min: 0.8, max: 1.0, mean: 0.95, std: 0.05 }, // straight up
+    handDistToKnee: { min: 0.3, max: 0.6, mean: 0.45, std: 0.1 }, // midway down thigh standing
+    headPosition: { min: 0.7, max: 1.0, mean: 0.9, std: 0.1 }
 };
 
 // Dumbbell Overhead Press: Upright torso, hands pushing above head
@@ -155,6 +199,12 @@ const DUMBBELL_PRESS_PROFILE: ExerciseProfile = {
     armStraightness: { min: 0.1, max: 1.0, mean: 0.6, std: 0.25 },
     wristBelowHip: { min: 0.0, max: 0.0, mean: 0.0, std: 0.0 }, // wrists high
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+    handDistToHip: { min: 0.5, max: 0.95, mean: 0.75, std: 0.15 }, // pressing directly upward away from hips
+    shoulderHipKneePos: { min: 0.0, max: 0.2, mean: 0.05, std: 0.05 }, // stacked vertical posture
+    handsInFront: { min: 0.2, max: 0.6, mean: 0.4, std: 0.1 }, // overhead
+    ankleToKneeLean: { min: 0.4, max: 0.9, mean: 0.6, std: 0.15 },
+    handDistToKnee: { min: 0.5, max: 1.0, mean: 0.8, std: 0.15 }, // far away overhead
+    headPosition: { min: 0.6, max: 1.0, mean: 0.85, std: 0.1 }
 };
 
 // Pull-Up: Hanging, arms pulling body up, hands above head
@@ -171,6 +221,12 @@ const PULLUP_PROFILE: ExerciseProfile = {
     armStraightness: { min: 0.1, max: 1.0, mean: 0.5, std: 0.3 },
     wristBelowHip: { min: 0.0, max: 0.0, mean: 0.0, std: 0.0 }, // wrists high
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
+    handDistToHip: { min: 0.6, max: 1.0, mean: 0.8, std: 0.1 }, // hanging directly down from bar
+    shoulderHipKneePos: { min: 0.0, max: 0.3, mean: 0.1, std: 0.1 }, // stacked hanging
+    handsInFront: { min: 0.0, max: 0.5, mean: 0.2, std: 0.1 }, // pulling overhead
+    ankleToKneeLean: { min: 0.7, max: 1.0, mean: 0.85, std: 0.1 }, // feet hanging straight
+    handDistToKnee: { min: 0.6, max: 1.0, mean: 0.85, std: 0.1 }, // hands on bar far from knees
+    headPosition: { min: 0.6, max: 1.0, mean: 0.8, std: 0.1 }
 };
 
 const PROFILES = [DEADLIFT_PROFILE, SQUAT_PROFILE, BENCH_PROFILE, PUSHUP_PROFILE, DUMBBELL_PRESS_PROFILE, PULLUP_PROFILE, NO_EXERCISE_PROFILE];
@@ -211,6 +267,12 @@ function generateTrainingData(samplesPerClass: number = 400): { xs: number[][]; 
                 gaussianSample(profile.armStraightness),
                 gaussianSample(profile.wristBelowHip),
                 gaussianSample(profile.symmetry),
+                gaussianSample(profile.handDistToHip),
+                gaussianSample(profile.shoulderHipKneePos),
+                gaussianSample(profile.handsInFront),
+                gaussianSample(profile.ankleToKneeLean),
+                gaussianSample(profile.handDistToKnee),
+                gaussianSample(profile.headPosition),
             ];
             xs.push(sample);
             ys.push(classIdx);
@@ -228,7 +290,7 @@ function buildModel(): tf.Sequential {
 
     // Input layer → Hidden layer 1 (64 neurons, ReLU)
     model.add(tf.layers.dense({
-        inputShape: [12],
+        inputShape: [18],
         units: 64,
         activation: 'relu',
         kernelInitializer: 'heNormal',
@@ -286,9 +348,9 @@ export async function trainModel(
 
     // Split train/validation (85/15)
     const splitIdx = Math.floor(shuffledXs.length * 0.85);
-    const xTrain = xsTensor.slice([0, 0], [splitIdx, 12]);
+    const xTrain = xsTensor.slice([0, 0], [splitIdx, 18]);
     const yTrain = ysTensor.slice([0], [splitIdx]);
-    const xVal = xsTensor.slice([splitIdx, 0], [shuffledXs.length - splitIdx, 12]);
+    const xVal = xsTensor.slice([splitIdx, 0], [shuffledXs.length - splitIdx, 18]);
     const yVal = ysTensor.slice([splitIdx], [shuffledYs.length - splitIdx]);
 
     console.log(`[MLTrainer] Training data: ${splitIdx} train, ${shuffledXs.length - splitIdx} val`);

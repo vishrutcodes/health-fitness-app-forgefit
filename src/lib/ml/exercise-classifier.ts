@@ -107,6 +107,37 @@ export function extractFeatures(landmarks: PoseLandmark[]): number[] {
     const hipAsym = 1 - Math.min(1, Math.abs(lHip - rHip) / 30);
     const symmetry = (kneeAsym + elbowAsym + hipAsym) / 3;
 
+    // --- NEW EXPERT FEATURES ---
+
+    // 13. Hand-to-Hip Distance (normalized)
+    const handHipDx = handY - hipY; // vertical gap
+    const handDistToHip = Math.min(1, Math.abs(handHipDx)); // 0=hands at hips, 1=hands far away
+
+    // 14. Shoulder-Hip Lean (horizontal displacement)
+    const shoulderHipDx = Math.abs(shoulderMid.x - hipMid.x);
+    const shoulderHipKneePos = Math.min(1, shoulderHipDx * 2);
+
+    // 15. Hands in front (horizontal displacement from shoulders)
+    const handX = (landmarks[15].x + landmarks[16].x) / 2;
+    const handsFrontDx = Math.abs(handX - shoulderMid.x);
+    const handsInFront = Math.min(1, handsFrontDx * 3);
+
+    // 16. Shin Angle / Lean
+    const kneeMid = { x: (landmarks[25].x + landmarks[26].x) / 2, y: (landmarks[25].y + landmarks[26].y) / 2 };
+    const dxShin = ankleMid.x - kneeMid.x;
+    const dyShin = ankleMid.y - kneeMid.y;
+    const shinAngleRaw = Math.abs(Math.atan2(dyShin, dxShin) * 180 / Math.PI);
+    const ankleToKneeLean = Math.abs(90 - shinAngleRaw) / 90;
+
+    // 17. Hand-to-Knee Distance
+    const handKneeDy = Math.abs(handY - kneeMid.y);
+    const handDistToKnee = Math.min(1, handKneeDy * 2);
+
+    // 18. Head Position (relative to shoulders)
+    const headY = (landmarks[0].y); // nose
+    const headPosRel = shoulderY - headY;
+    const headPosition = Math.max(0, Math.min(1, headPosRel + 0.5));
+
     // Normalize features to match training data scaling
     return [
         avgKnee / 180,
@@ -121,6 +152,12 @@ export function extractFeatures(landmarks: PoseLandmark[]): number[] {
         armStraightness,
         wristBelowHip,
         symmetry,
+        handDistToHip,
+        shoulderHipKneePos,
+        handsInFront,
+        ankleToKneeLean,
+        handDistToKnee,
+        headPosition
     ];
 }
 
