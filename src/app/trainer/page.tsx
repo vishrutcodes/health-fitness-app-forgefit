@@ -1,13 +1,14 @@
+"use client";
+
 import { useState, useRef, useCallback } from "react";
 import { Upload, FolderKanban, Save, Play, Loader2, Image as ImageIcon, Database, BrainCircuit, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { ExerciseClass } from "@/lib/ml/exercise-classifier";
 
-// ML Imports
-import * as tf from "@tensorflow/tfjs";
-import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
-import { extractFeatures, EXERCISE_CLASSES, type ExerciseClass } from "@/lib/ml/exercise-classifier";
+// Exercise class names (duplicated to avoid importing the full ML module at top level)
+const EXERCISE_CLASSES: ExerciseClass[] = ['Deadlift', 'Squat', 'Bench Press', 'Push-up', 'Dumbbell Overhead Press', 'Pull-Up', 'No Exercise'];
 
 interface ProcessingStats {
     total: number;
@@ -37,9 +38,18 @@ export default function DatasetTrainer() {
     const processImages = async (targetExercise: ExerciseClass) => {
         if (files.length === 0) return;
         setIsProcessing(true);
-        setStats({ total: files.length, success: 0, failed: 0, currentFile: "Initializing MediaPipe..." });
+        setStats({ total: files.length, success: 0, failed: 0, currentFile: "Loading MediaPipe..." });
 
         try {
+            // Dynamic imports (browser-only modules)
+            const [mediapipeMod, classifierMod] = await Promise.all([
+                import("@mediapipe/tasks-vision"),
+                import("@/lib/ml/exercise-classifier"),
+            ]);
+            const { FilesetResolver, PoseLandmarker } = mediapipeMod;
+
+            setStats(prev => ({ ...prev, currentFile: "Initializing MediaPipe..." }));
+
             // 1. Initialize Vision Model
             const vision = await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
@@ -80,7 +90,7 @@ export default function DatasetTrainer() {
                         const landmarks = result.landmarks[0];
 
                         // Extract 18 custom features!
-                        const features = extractFeatures(landmarks);
+                        const features = classifierMod.extractFeatures(landmarks);
                         newFeatures.push(features);
 
                         setStats(prev => ({ ...prev, success: prev.success + 1 }));
