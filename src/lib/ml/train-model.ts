@@ -234,7 +234,7 @@ export async function trainModel(
 
     // Convert to tensors
     const xsTensor = tf.tensor2d(shuffledXs);
-    const ysTensor = tf.tensor1d(shuffledYs, 'int32');
+    const ysTensor = tf.tensor1d(shuffledYs, 'float32');
 
     // Split train/validation (85/15)
     const splitIdx = Math.floor(shuffledXs.length * 0.85);
