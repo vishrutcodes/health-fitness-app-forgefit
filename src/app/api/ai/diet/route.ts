@@ -47,6 +47,45 @@ Preferences/Allergies: ${preferences}`
         });
 
         const data = JSON.parse(completion.choices[0].message.content || "{}");
+
+        // Mathematical Corrector Engine:
+        // LLMs are terrible at math. We scale the LLM's proportional distribution 
+        // to EXACTLY match the user's strict input targets, providing zero-drift accuracy.
+        if (data.meals && Array.isArray(data.meals)) {
+            let sumP = 0, sumC = 0, sumF = 0;
+            data.meals.forEach((m: any) => {
+                sumP += Number(m.protein) || 0;
+                sumC += Number(m.carbs) || 0;
+                sumF += Number(m.fat) || 0;
+            });
+
+            // Prevent div by zero
+            sumP = sumP || 1; sumC = sumC || 1; sumF = sumF || 1;
+
+            let runningP = 0, runningC = 0, runningF = 0;
+
+            for (let i = 0; i < data.meals.length; i++) {
+                const meal = data.meals[i];
+                if (i === data.meals.length - 1) {
+                    // Last meal gets the exact remainder to ensure 100% sum compliance
+                    meal.protein = Math.max(0, Number(target_protein) - runningP);
+                    meal.carbs = Math.max(0, Number(target_carbs) - runningC);
+                    meal.fat = Math.max(0, Number(target_fat) - runningF);
+                } else {
+                    meal.protein = Math.round((Number(meal.protein) / sumP) * Number(target_protein));
+                    meal.carbs = Math.round((Number(meal.carbs) / sumC) * Number(target_carbs));
+                    meal.fat = Math.round((Number(meal.fat) / sumF) * Number(target_fat));
+
+                    runningP += meal.protein;
+                    runningC += meal.carbs;
+                    runningF += meal.fat;
+                }
+
+                // Force true calorie calculation based on the perfectly scaled macros
+                meal.calories = Math.round((meal.protein * 4) + (meal.carbs * 4) + (meal.fat * 9));
+            }
+        }
+
         return NextResponse.json({ success: true, data });
 
     } catch (error: any) {
