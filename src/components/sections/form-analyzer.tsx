@@ -402,7 +402,7 @@ export function FormAnalyzer() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    {result.score > 0 && (
+                                                    {result.score > 0 && result.exercise !== "No Exercise" && (
                                                         <div className="text-right">
                                                             <p className="text-xs uppercase tracking-wider text-slate-500">Form Score</p>
                                                             <p className={`text-3xl font-bold ${scoreColor(result.score)}`}>
