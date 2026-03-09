@@ -33,6 +33,7 @@ All values should be accurate estimates in grams. Do not include calories.`,
         });
 
         const text = completion.choices[0]?.message?.content || "";
+        console.log("RAW LLM OUTPUT:", text);
         // Extract JSON from the response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {

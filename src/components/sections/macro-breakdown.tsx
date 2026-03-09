@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 
 interface FoodItem {
     name: string;
+    quantity: string;
     amount: string;
 }
 
@@ -23,12 +24,12 @@ interface MacroResult {
 }
 
 export function MacroBreakdown() {
-    const [foods, setFoods] = useState<FoodItem[]>([{ name: "", amount: "" }]);
+    const [foods, setFoods] = useState<FoodItem[]>([{ name: "", quantity: "1", amount: "" }]);
     const [result, setResult] = useState<MacroResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const addFood = () => setFoods([...foods, { name: "", amount: "" }]);
+    const addFood = () => setFoods([...foods, { name: "", quantity: "1", amount: "" }]);
     const removeFood = (i: number) => setFoods(foods.filter((_, idx) => idx !== i));
     const updateFood = (i: number, field: keyof FoodItem, value: string) => {
         const updated = [...foods];
@@ -40,6 +41,13 @@ export function MacroBreakdown() {
         const validFoods = foods.filter(f => f.name.trim() && f.amount.trim());
         if (validFoods.length === 0) return;
 
+        // Concatenate quantity and name before sending to API 
+        // Example: { name: "boiled eggs", quantity: "6" } becomes { name: "6 boiled eggs", amount: "50g" }
+        const payloadFoods = validFoods.map(f => ({
+            name: `${f.quantity.trim() || "1"} ${f.name.trim()}`.trim(),
+            amount: f.amount.trim()
+        }));
+
         setLoading(true);
         setError("");
         setResult(null);
@@ -48,7 +56,7 @@ export function MacroBreakdown() {
             const res = await fetch("/api/ai/macros", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ foods: validFoods }),
+                body: JSON.stringify({ foods: payloadFoods }),
             });
             const data = await res.json();
             if (data.error) {
@@ -89,27 +97,38 @@ export function MacroBreakdown() {
                         <CardContent>
                             <div className="space-y-3">
                                 {foods.map((food, i) => (
-                                    <div key={i} className="flex gap-2 sm:gap-3 items-end">
-                                        <div className="flex-1 space-y-1">
-                                            <Label className="text-slate-300 text-xs text-left w-full block">Food</Label>
+                                    <div key={i} className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-3 items-end">
+                                        <div className="flex-1 min-w-[140px] space-y-1">
+                                            <Label className="text-slate-300 text-xs text-left w-full block">Food Name</Label>
                                             <Input
-                                                placeholder="e.g. Chicken breast"
+                                                placeholder="e.g. Boiled egg"
                                                 value={food.name}
                                                 onChange={(e) => updateFood(i, "name", e.target.value)}
                                                 className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange"
                                             />
                                         </div>
-                                        <div className="w-24 sm:w-32 space-y-1">
-                                            <Label className="text-slate-300 text-xs text-left w-full block">Amount</Label>
+                                        <div className="w-[80px] sm:w-[100px] shrink-0 space-y-1">
+                                            <Label className="text-slate-300 text-xs text-left w-full block text-nowrap truncate">Qty (Items)</Label>
                                             <Input
-                                                placeholder="e.g. 200g"
+                                                type="number"
+                                                min="1"
+                                                placeholder="e.g. 6"
+                                                value={food.quantity}
+                                                onChange={(e) => updateFood(i, "quantity", e.target.value)}
+                                                className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange"
+                                            />
+                                        </div>
+                                        <div className="w-[100px] sm:w-[120px] shrink-0 space-y-1">
+                                            <Label className="text-slate-300 text-xs text-left w-full block text-nowrap truncate">Grams per item</Label>
+                                            <Input
+                                                placeholder="e.g. 50g"
                                                 value={food.amount}
                                                 onChange={(e) => updateFood(i, "amount", e.target.value)}
                                                 className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange"
                                             />
                                         </div>
                                         {foods.length > 1 && (
-                                            <Button variant="ghost" size="icon" onClick={() => removeFood(i)} className="shrink-0 text-slate-500 hover:text-red-400 hover:bg-red-400/10">
+                                            <Button variant="ghost" size="icon" onClick={() => removeFood(i)} className="shrink-0 text-slate-500 hover:text-red-400 hover:bg-red-400/10 self-end mt-2 sm:mt-0">
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}
