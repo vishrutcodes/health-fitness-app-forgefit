@@ -12,6 +12,7 @@ interface AIMeal {
     meal_name: string;
     dish: string;
     ingredients: string[];
+    recipe: string;
     protein: number;
     carbs: number;
     fat: number;
@@ -256,15 +257,25 @@ export function DietArchitect() {
                                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                                         <Utensils className="h-3 w-3" /> Ingredients
                                                     </h4>
-                                                    <div className="bg-slate-900/40 rounded-xl p-4 border border-white/5 line-clamp-none">
-                                                        <ul className="space-y-2">
-                                                            {meal.ingredients.map((ing, iIdx) => (
-                                                                <li key={iIdx} className="flex gap-3 items-start text-sm text-slate-300">
-                                                                    <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0"></div>
-                                                                    <span>{ing}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
+                                                    <div className="bg-slate-900/40 rounded-xl border border-white/5 divide-y divide-white/5">
+                                                        <div className="p-4">
+                                                            <ul className="space-y-2">
+                                                                {meal.ingredients.map((ing, iIdx) => (
+                                                                    <li key={iIdx} className="flex gap-3 items-start text-sm text-slate-300">
+                                                                        <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0"></div>
+                                                                        <span>{ing}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                        {meal.recipe && (
+                                                            <div className="p-4 bg-slate-900/20">
+                                                                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Instructions</h4>
+                                                                <p className="text-sm text-slate-400 leading-relaxed italic border-l-2 border-slate-700 pl-3">
+                                                                    {meal.recipe}
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

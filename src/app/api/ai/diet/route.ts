@@ -23,7 +23,8 @@ OUTPUT FORMAT: You must return ONLY valid JSON matching this exact schema:
     { 
       "meal_name": "Breakfast", 
       "dish": "String", 
-      "ingredients": ["String"], 
+      "ingredients": ["String"],
+      "recipe": "String (Short, punchy 2-step prep instructions)", 
       "protein": Number, 
       "carbs": Number, 
       "fat": Number,

@@ -26,6 +26,7 @@ CRITICAL RULES:
 {
     "dish": "String (e.g., 'Spiced Lentil Salad with Quinoa')",
     "ingredients": ["String"],
+    "recipe": "String (Short, punchy 2-step prep instructions)",
     "protein": Number,
     "carbs": Number,
     "fat": Number
@@ -46,7 +47,12 @@ Avoid this dish: ${avoidDish || "None"}`
 
         const data = JSON.parse(completion.choices[0].message.content || "{}");
 
-        // Mathematical guarantee for calories on the backend, ignoring what the LLM might have outputted.
+        // Force zero-drift on macros by strictly enforcing the targets over what the LLM guessed
+        data.protein = Number(targetProtein);
+        data.carbs = Number(targetCarbs);
+        data.fat = Number(targetFat);
+
+        // Mathematical guarantee for calories on the backend
         data.calories = Math.round((data.protein * 4) + (data.carbs * 4) + (data.fat * 9));
 
         // Pass back the meal name since the LLM schema doesn't include it.
