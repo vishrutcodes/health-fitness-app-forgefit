@@ -34,7 +34,7 @@ A premium, production-grade fitness web application combining **artificial intel
    - [Fitness Toolkit (5-in-1)](#7--fitness-toolkit--5-in-1-calculator-suite)
    - [Workout Timer (Rest + HIIT)](#8--workout-timer--dual-mode-interval-timer)
    - [Phase Planner](#9--phase-planner--training-block-periodization)
-   - [Knowledge Base](#10--knowledge-base--fitness-education-hub)
+   - [Ultimate Fitness Masterclasses](#10--ultimate-fitness-masterclasses--comprehensive-guides)
    - [Body Progress Tracker](#11--body-progress-tracker--measurement-dashboard)
    - [Personal Records Tracker](#12--personal-records-tracker--strength-dashboard)
    - [AI Form Analyzer (ML Pose Detection)](#13--ai-form-analyzer--ml-powered-exercise-form-analysis)
@@ -460,21 +460,24 @@ This tool helps intermediate and advanced trainees plan structured mesocycles �
 
 ---
 
-### 10. 📚 Knowledge Base — Fitness Education Hub
+### 10. 📚 Ultimate Fitness Masterclasses — Comprehensive Guides
 
 **Component:** `src/components/sections/knowledge-base.tsx`
 
-A curated collection of 5 fitness education categories, each represented as an interactive card:
+A curated collection of 10 fully comprehensive, essay-length fitness masterclasses replacing short-form content with deep, well-researched information:
 
-| Guide | Description | Icon |
-|-------|-------------|------|
-| **Bulking Guide** | Lean mass gain strategies | TrendingUp (Emerald) |
-| **Fat Loss Guide** | Sustainable cutting methods | Award (Red) |
-| **Muscle Building** | Hypertrophy fundamentals | Dumbbell (Blue) |
-| **Supplementation** | Evidence-based supplements | Pill (Purple) |
-| **Best Exercises** | Top compound movements | Dumbbell (Yellow) |
+- **Bulking Guide (Lean Mass Gain)** — Optimizing diet and training for maximum muscle growth
+- **Fat Loss Guide (Sustainable Cutting)** — Losing body fat while preserving hard-earned muscle mass
+- **Supplementation (Science-Backed)** — Separating effective, evidence-based supplements from marketing hype
+- **Best Exercises (The Biomechanical Big 4)** — The foundational compound movements that yield 80% of results
+- **Recovery & Mobility (The Unseen Variables)** — Crucial practices for CNS regeneration, tissue repair, and longevity
+- **Progressive Overload Mastery** — The absolute core principle of all muscular strength and size gains
+- **Demystifying Macros & Timing (Nutrition)** — The hierarchy of nutritional importance and the truth about timing
+- **Cardio vs Weight Training (The Ultimate Debate)** — Understanding the different physiological adaptations
+- **Breaking Through Plateaus (Advanced Strategies)** — Systematic approaches to overcoming stalled progress
+- **The Truth About 'Toning' & Spot Reduction** — Dispelling the most persistent and damaging fitness myths
 
-Cards feature hover animations (scale transform on icons, color transitions on titles), and the section includes a prominent "Ask AI Coach" CTA button.
+Cards feature interactive expand/collapse mechanics, hover animations (scale transform, rotating icons, glowing backdrops), and rich text formatting (quotes, bullet points with emojis, section headers).
 
 ---
 
@@ -644,8 +647,8 @@ src/components/
 │   │                                  #   + HIIT Timer (work/rest/rounds) with SVG circular display
 │   ├── phase-planner.tsx              # [140 lines] Training block planner with CRUD — cutting,
 │   │                                  #   bulking, maintaining, deload phases with calorie targets
-│   ├── knowledge-base.tsx             # [58 lines] Fitness education hub — 5 guide categories
-│   │                                  #   with hover animations and AI Coach CTA
+│   ├── knowledge-base.tsx             # [~300 lines] 10 Ultimate Fitness Masterclasses — Deep-dive essays
+│   │                                  #   with rich formatting, expand/collapse, and glass-morphic styles
 │   ├── form-analyzer.tsx              # [1000+ lines] ML-powered form analyzer — MediaPipe pose
 │   │                                  #   detection, multi-signal scoring for 17 exercises,
 │   │                                  #   form corrections, model diagnostics (accuracy,
