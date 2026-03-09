@@ -19,6 +19,7 @@ const navLinks = [
 ];
 
 const moreLinks = [
+    { label: "AI Form Analyzer", href: "#form-analyzer" },
     { label: "Exercise Guide", href: "#exercise-guide" },
     { label: "Workout Timer", href: "#timer" },
     { label: "Phase Planner", href: "#planner" },
