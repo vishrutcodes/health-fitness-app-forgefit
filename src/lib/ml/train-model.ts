@@ -77,46 +77,46 @@ interface ExerciseProfile {
 
 // Deadlift: Forward lean, straight arms, hands near ground, hip-dominant hinge
 const DEADLIFT_PROFILE: ExerciseProfile = {
-    kneeAngle: { min: 95, max: 170, mean: 135, std: 20 },   // moderately bent
+    kneeAngle: { min: 95, max: 180, mean: 140, std: 25 },   // Bottom to standing
     elbowAngle: { min: 140, max: 180, mean: 165, std: 10 },   // STRAIGHT arms
-    hipAngle: { min: 60, max: 155, mean: 110, std: 25 },   // hinged
-    shoulderAngle: { min: 10, max: 50, mean: 25, std: 12 },   // arms hanging
-    torsoAngle: { min: 10, max: 75, mean: 42, std: 15 },   // forward lean
-    hipKneeRatio: { min: 0.45, max: 0.95, mean: 0.75, std: 0.12 }, // hip-dominant
+    hipAngle: { min: 60, max: 180, mean: 120, std: 35 },   // Hinged to standing
+    shoulderAngle: { min: 10, max: 50, mean: 25, std: 12 },   // Arms hanging down
+    torsoAngle: { min: -5, max: 80, mean: 35, std: 25 },   // Vertical to forward lean
+    hipKneeRatio: { min: 0.45, max: 1.2, mean: 0.8, std: 0.2 }, // Hip-dominant to standing
     stanceWidth: { min: 0.08, max: 0.28, mean: 0.16, std: 0.05 },
-    handHeight: { min: -0.35, max: 0.0, mean: -0.15, std: 0.08 }, // below shoulders
-    isHorizontal: { min: 0, max: 0.3, mean: 0.1, std: 0.05 },  // NOT horizontal
-    armStraightness: { min: 0.7, max: 1.0, mean: 0.9, std: 0.08 },  // arms straight
-    wristBelowHip: { min: 0.5, max: 1.0, mean: 0.8, std: 0.15 },  // wrists low
+    handHeight: { min: -0.35, max: 0.0, mean: -0.15, std: 0.1 }, // Hands holding bar
+    isHorizontal: { min: 0, max: 0.3, mean: 0.05, std: 0.1 },  // NOT horizontal
+    armStraightness: { min: 0.7, max: 1.0, mean: 0.9, std: 0.08 },  // Arms straight
+    wristBelowHip: { min: 0.0, max: 1.0, mean: 0.5, std: 0.3 },  // Wrists move from hips to low
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
-    handDistToHip: { min: 0.2, max: 0.6, mean: 0.4, std: 0.1 }, // hands reach past hips down to shins
-    hipToKneeX: { min: 0.15, max: 0.5, mean: 0.35, std: 0.1 }, // Hips pushed way back
+    handDistToHip: { min: 0.0, max: 0.6, mean: 0.3, std: 0.15 }, // Hands at hips when standing, far when down
+    hipToKneeX: { min: 0.0, max: 0.5, mean: 0.25, std: 0.15 }, // 0 when standing, up to 0.5 pivoted
     kneeToAnkleX: { min: 0.0, max: 0.15, mean: 0.05, std: 0.05 }, // Vertical shins
-    handDistToAnkle: { min: 0.1, max: 0.5, mean: 0.25, std: 0.1 }, // Hands mid shin
-    handDistToKnee: { min: 0.0, max: 0.2, mean: 0.05, std: 0.05 }, // Hands are constantly passing perfectly in front of knees
-    headPosition: { min: 0.5, max: 1.0, mean: 0.8, std: 0.1 }
+    handDistToAnkle: { min: 0.1, max: 0.8, mean: 0.4, std: 0.2 }, // Hands to mid shin to hip
+    handDistToKnee: { min: 0.0, max: 0.5, mean: 0.2, std: 0.15 }, // Hands passing knees
+    headPosition: { min: 0.5, max: 1.0, mean: 0.75, std: 0.15 }
 };
 
 // Squat: Upright torso, deep knee bend, hip-knee co-flexion, bar on back
 const SQUAT_PROFILE: ExerciseProfile = {
-    kneeAngle: { min: 55, max: 155, mean: 100, std: 25 },   // DEEP bend
-    elbowAngle: { min: 40, max: 150, mean: 85, std: 30 },   // arms holding bar
-    hipAngle: { min: 55, max: 155, mean: 100, std: 25 },   // co-flexing with knee
-    shoulderAngle: { min: 30, max: 90, mean: 55, std: 18 },   // arms up on bar
-    torsoAngle: { min: 0, max: 50, mean: 20, std: 12 },   // UPRIGHT
-    hipKneeRatio: { min: 0.85, max: 1.15, mean: 1.0, std: 0.08 }, // balanced
-    stanceWidth: { min: 0.10, max: 0.32, mean: 0.20, std: 0.06 },
-    handHeight: { min: -0.10, max: 0.15, mean: 0.02, std: 0.06 },
-    isHorizontal: { min: 0, max: 0.2, mean: 0.05, std: 0.05 }, // NOT horizontal
-    armStraightness: { min: 0.1, max: 0.65, mean: 0.35, std: 0.15 }, // arms bent on bar
-    wristBelowHip: { min: 0.0, max: 0.3, mean: 0.0, std: 0.1 },  // wrists up
+    kneeAngle: { min: 50, max: 180, mean: 120, std: 45 },   // Bottom to standing
+    elbowAngle: { min: 30, max: 120, mean: 75, std: 30 },   // Holding bar on back
+    hipAngle: { min: 60, max: 180, mean: 120, std: 45 },   // Bottom to standing
+    shoulderAngle: { min: 10, max: 100, mean: 55, std: 25 },   // Arms back
+    torsoAngle: { min: -5, max: 65, mean: 30, std: 25 },    // Perfectly vertical to leaned forward
+    hipKneeRatio: { min: 0.5, max: 2.0, mean: 1.0, std: 0.4 },
+    stanceWidth: { min: 0.1, max: 0.4, mean: 0.25, std: 0.1 },
+    handHeight: { min: -0.2, max: 0.4, mean: 0.1, std: 0.15 }, // Hands holding bar behind neck
+    isHorizontal: { min: 0, max: 0.2, mean: 0.05, std: 0.05 }, // Strictly NOT horizontal
+    armStraightness: { min: 0.1, max: 0.7, mean: 0.35, std: 0.2 },
+    wristBelowHip: { min: 0.0, max: 0.3, mean: 0.0, std: 0.1 },
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
-    handDistToHip: { min: 0.2, max: 0.5, mean: 0.35, std: 0.1 }, // Hands on back
-    hipToKneeX: { min: 0.0, max: 0.2, mean: 0.1, std: 0.05 }, // Hips drop down not far back
-    kneeToAnkleX: { min: 0.15, max: 0.5, mean: 0.25, std: 0.1 }, // Knees forward
-    handDistToKnee: { min: 0.4, max: 0.8, mean: 0.6, std: 0.1 }, // Hands high
-    handDistToAnkle: { min: 0.6, max: 1.0, mean: 0.8, std: 0.1 }, // Hands highest
-    headPosition: { min: 0.4, max: 0.8, mean: 0.6, std: 0.1 }
+    handDistToHip: { min: 0.2, max: 0.6, mean: 0.4, std: 0.1 }, // Hands to hip (depends on torso length)
+    hipToKneeX: { min: 0.0, max: 0.4, mean: 0.15, std: 0.15 }, // 0 = standing straightforward
+    kneeToAnkleX: { min: 0.0, max: 0.5, mean: 0.2, std: 0.15 }, // 0 = standing straightforward
+    handDistToKnee: { min: 0.4, max: 0.9, mean: 0.65, std: 0.15 },
+    handDistToAnkle: { min: 0.6, max: 1.0, mean: 0.85, std: 0.15 },
+    headPosition: { min: 0.3, max: 0.9, mean: 0.6, std: 0.15 }
 };
 
 // Bench Press: Horizontal body, arms pressing, lying on bench
