@@ -29,7 +29,7 @@ TASK: Identify the exercise and analyze the form.
 
 You MUST respond in EXACTLY this JSON format, nothing else:
 {
-  "exercise": "<one of: Squat, Deadlift, Bench Press, Push-up, Dumbbell Overhead Press, Pull-Up, Barbell Row, Lunge, Dumbbell Lateral Raise, Bicep Curl, No Exercise>",
+  "exercise": "<Name of the exercise being performed, or 'No Exercise' if none>",
   "confidence": <number 0-100>,
   "form_score": <number 1-10>,
   "corrections": ["<correction 1>", "<correction 2>"],
@@ -37,20 +37,14 @@ You MUST respond in EXACTLY this JSON format, nothing else:
 }
 
 RULES:
-- "exercise" must be EXACTLY one of the listed names
-- Look at the body position, equipment, and movement pattern
-- Squat: bar on back/shoulders, person bending knees and hips together, upright torso
-- Deadlift: bar in hands hanging down, hip hinge, forward lean, straight arms
-- Bench Press: person lying flat on bench, pressing bar upward
-- Push-up: person face down, pushing body up from floor
-- Dumbbell Overhead Press: standing/seated, pressing weights overhead
-- Pull-Up: hanging from bar, pulling body upward
-- Dumbbell Lateral Raise: standing, raising arms OUTWARD and sideways away from body to shoulder height. Elbows are only slightly bent, locked in place.
-- Bicep Curl: standing/seated, holding dumbbells/barbell, bending arms AT THE ELBOW to curl weight UP toward shoulders. Upper arm stays still.
-- If the person is clearly performing a gym exercise, identify it. Do NOT say "No Exercise" unless there is genuinely no exercise happening.
-- For form analysis, provide specific, actionable corrections and positives based on what you see.
-- For Dumbbell Lateral Raise, check: controlled tempo, slight elbow bend, arms not going above shoulder height, no excessive body swinging/momentum, shoulders not shrugging up
-- For Bicep Curl, check: elbows pinned to sides, no body swing/momentum, full range of motion
+- "exercise" should be the standard, widely-accepted name of the gym exercise (e.g., "Squat", "Deadlift", "Lat Pulldown", "Bicep Curl", "Cable Crossover", etc.)
+- Look carefully at the body position, equipment used, and movement pattern.
+- Distinguish closely related exercises:
+  - Lat Pulldown vs Pull-Up: Lat Pulldown uses a cable machine while sitting. Pull-up involves hanging from a fixed bar.
+  - Lateral Raise vs Bicep Curl: Lateral Raise moves arms OUTWARD with locked elbows. Bicep Curl bends arms AT THE ELBOW.
+  - Squat vs Deadlift: Squat aims for upright torso with deep knee bend. Deadlift is a hip hinge with forward torso lean.
+- If the person is clearly performing a gym exercise, identify it accurately. Do NOT say "No Exercise" unless there is genuinely no exercise happening.
+- For form analysis, provide specific, actionable corrections and positives based on exactly what you observe in the frames.
 - Respond with ONLY the JSON, no markdown, no backticks, no explanation.`,
                         },
                         ...imageContent,
