@@ -72,27 +72,16 @@ export function FormAnalyzer() {
         setAnalyzing(true);
         setResult(null);
         setError("");
-        setStatusMsg("Initializing ML pipeline...");
+        setStatusMsg("Initializing analysis pipeline...");
 
         try {
-            // ── Step 1: Dynamic imports ──
-            setStatusMsg("Loading TensorFlow.js and MediaPipe...");
-            const [tfMod, classifierMod, mediapipeMod] = await Promise.all([
-                import("@tensorflow/tfjs"),
+            // ── Step 1: Load MediaPipe for skeleton + joint angles ──
+            setStatusMsg("Loading MediaPipe Pose Landmarker...");
+            const [classifierMod, mediapipeMod] = await Promise.all([
                 import("@/lib/ml/exercise-classifier"),
                 import("@mediapipe/tasks-vision"),
             ]);
 
-            await tfMod.ready();
-
-            // ── Step 2: Train model ──
-            setStatusMsg("Training neural network (synthetic data)...");
-            await classifierMod.initializeModel((msg, progress) => {
-                setStatusMsg(`${msg} (${progress}%)`);
-            });
-
-            // ── Step 3: Initialize MediaPipe ──
-            setStatusMsg("Initializing MediaPipe Pose Landmarker...");
             const { PoseLandmarker, FilesetResolver } = mediapipeMod;
             const vision = await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
@@ -106,8 +95,8 @@ export function FormAnalyzer() {
                 numPoses: 1,
             });
 
-            // ── Step 4: Sample frames from video ──
-            setStatusMsg("Sampling video frames...");
+            // ── Step 2: Extract key frames from video ──
+            setStatusMsg("Extracting key frames from video...");
             const video = videoRef.current;
             const canvas = canvasRef.current;
             const ctx = canvas.getContext("2d")!;
@@ -118,129 +107,95 @@ export function FormAnalyzer() {
             });
 
             const duration = video.duration;
-            const numSamples = 16;
-            const timestamps: number[] = [];
-            for (let i = 0; i < numSamples; i++) {
-                timestamps.push((duration * (i + 0.5)) / numSamples);
-            }
-
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
 
-            const frameClassifications: string[] = [];
-            const allProbabilities: Record<string, number>[] = [];
-            let bestLandmarks: PoseLandmark[] | null = null;
-            let bestExercise = "";
-            let bestConfidence = 0;
+            // Extract 3 key frames at 25%, 50%, 75% of video for Groq Vision
+            const keyTimestamps = [duration * 0.25, duration * 0.5, duration * 0.75];
+            const base64Frames: string[] = [];
 
-            for (let i = 0; i < timestamps.length; i++) {
-                setStatusMsg(`Running ML inference on frame ${i + 1}/${numSamples}...`);
-
-                // Seek to timestamp
+            for (let i = 0; i < keyTimestamps.length; i++) {
+                setStatusMsg(`Capturing frame ${i + 1}/3...`);
                 await new Promise<void>((resolve) => {
-                    video.currentTime = timestamps[i];
+                    video.currentTime = keyTimestamps[i];
                     video.onseeked = () => resolve();
                 });
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                base64Frames.push(canvas.toDataURL("image/jpeg", 0.8));
+            }
 
+            // ── Step 3: Send frames to Groq Vision API ──
+            setStatusMsg("🧠 Sending frames to Groq Vision AI...");
+            const apiResponse = await fetch("/api/ai/form-analyzer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ frames: base64Frames }),
+            });
+
+            if (!apiResponse.ok) {
+                const errData = await apiResponse.json();
+                throw new Error(errData.error || "Groq Vision API request failed");
+            }
+
+            const groqResult = await apiResponse.json();
+            const finalExercise = groqResult.exercise || "No Exercise";
+            const finalConfidence = groqResult.confidence || 0;
+
+            // ── Step 4: Run MediaPipe for skeleton + joint angles ──
+            setStatusMsg("Detecting pose skeleton...");
+
+            // Sample multiple frames for pose detection
+            const numPoseSamples = 8;
+            const poseTimestamps: number[] = [];
+            for (let i = 0; i < numPoseSamples; i++) {
+                poseTimestamps.push((duration * (i + 0.5)) / numPoseSamples);
+            }
+
+            let bestLandmarks: PoseLandmark[] | null = null;
+            const frameClassifications: string[] = [];
+
+            for (let i = 0; i < poseTimestamps.length; i++) {
+                setStatusMsg(`Analyzing pose frame ${i + 1}/${numPoseSamples}...`);
+                await new Promise<void>((resolve) => {
+                    video.currentTime = poseTimestamps[i];
+                    video.onseeked = () => resolve();
+                });
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // Run MediaPipe
                 const poseResult = poseLandmarker.detectForVideo(canvas, performance.now());
-                if (!poseResult.landmarks || poseResult.landmarks.length === 0) {
+                if (poseResult.landmarks && poseResult.landmarks.length > 0) {
+                    const landmarks = poseResult.landmarks[0] as PoseLandmark[];
+                    if (!bestLandmarks) bestLandmarks = landmarks;
+                    frameClassifications.push(`${finalExercise} (${finalConfidence}%)`);
+                } else {
                     frameClassifications.push("No Pose");
-                    continue;
-                }
-
-                const landmarks = poseResult.landmarks[0] as PoseLandmark[];
-
-                // Run ML classifier
-                const classification = await classifierMod.classifyExercise(landmarks);
-                frameClassifications.push(`${classification.exercise} (${classification.confidence}%)`);
-                allProbabilities.push(classification.probabilities);
-
-                if (classification.exercise !== "No Exercise" && classification.confidence > bestConfidence) {
-                    bestConfidence = classification.confidence;
-                    bestExercise = classification.exercise;
-                    bestLandmarks = landmarks;
                 }
             }
 
-            // ── Step 5: Aggregate results (majority voting) ──
-            setStatusMsg("Aggregating ML predictions...");
-
-            // Count exercise votes (ignore "No Exercise" and "No Pose")
-            const votes: Record<string, number> = {};
-            for (const fc of frameClassifications) {
-                const exerciseName = fc.split(" (")[0];
-                if (exerciseName === "No Exercise" || exerciseName === "No Pose") continue;
-                votes[exerciseName] = (votes[exerciseName] || 0) + 1;
-            }
-
-            // Average probabilities across frames
-            const avgProbs: Record<string, number> = {};
-            if (allProbabilities.length > 0) {
-                for (const key of Object.keys(allProbabilities[0])) {
-                    avgProbs[key] = Math.round(
-                        allProbabilities.reduce((sum, p) => sum + (p[key] || 0), 0) / allProbabilities.length
-                    );
-                }
-            }
-
-            // Final classification
-            const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
-            const exerciseCount = frameClassifications.filter(f => !f.startsWith("No ")).length;
-
-            if (sortedVotes.length === 0 || exerciseCount < 3) {
-                setResult({
-                    exercise: "No Exercise Detected",
-                    confidence: 0,
-                    score: 0,
-                    corrections: [
-                        "❌ The ML model could not classify an exercise in this video.",
-                        "📹 Upload a clear video of a deadlift, squat, bench press, push-up, dumbbell overhead press, or pull-up.",
-                        "🧠 The neural network needs to see clear joint movements."
-                    ],
-                    positives: [],
-                    probabilities: avgProbs,
-                    jointAngles: {},
-                    frameClassifications,
-                    trainingProgress: "Complete",
-                    modelAccuracy: 0,
-                });
-                return;
-            }
-
-            const finalExercise = sortedVotes[0][0];
-            const finalConfidence = avgProbs[finalExercise] || bestConfidence;
-
-            // ── Step 6: Form analysis ──
-            setStatusMsg("Analyzing form...");
-            let formResult = { score: 7, corrections: [] as string[], positives: ["✅ Pose detected."] };
-            if (bestLandmarks) {
-                formResult = classifierMod.analyzeForm(bestLandmarks, finalExercise as ExerciseClass);
-            }
-
-            // Get joint angles for display
+            // ── Step 5: Get joint angles + draw skeleton ──
+            setStatusMsg("Calculating joint angles...");
             let jointAngles: Record<string, number> = {};
             if (bestLandmarks) {
                 jointAngles = classifierMod.extractRawFeatures(bestLandmarks);
-            }
-
-            // Draw skeleton on best frame
-            if (bestLandmarks) {
                 drawSkeleton(ctx, bestLandmarks, canvas.width, canvas.height);
             }
+
+            // Build probabilities display from Groq confidence
+            const probabilities: Record<string, number> = {};
+            probabilities[finalExercise] = finalConfidence;
+
+            poseLandmarker.close();
 
             setResult({
                 exercise: finalExercise,
                 confidence: finalConfidence,
-                score: formResult.score,
-                corrections: formResult.corrections,
-                positives: formResult.positives,
-                probabilities: avgProbs,
+                score: groqResult.form_score || 7,
+                corrections: groqResult.corrections || [],
+                positives: groqResult.positives || ["✅ Pose detected."],
+                probabilities,
                 jointAngles,
                 frameClassifications,
-                trainingProgress: "Complete",
+                trainingProgress: "Groq Vision AI",
                 modelAccuracy: finalConfidence,
             });
 
