@@ -143,13 +143,13 @@ const NO_EXERCISE_PROFILE: ExerciseProfile = {
 
 // Dumbbell Overhead Press: Upright torso, hands pushing above head
 const DUMBBELL_PRESS_PROFILE: ExerciseProfile = {
-    kneeAngle: { min: 160, max: 180, mean: 175, std: 5 },   // standing mostly
+    kneeAngle: { min: 80, max: 180, mean: 135, std: 35 },   // standing (180) or seated (~90)
     elbowAngle: { min: 45, max: 180, mean: 110, std: 40 },   // pressing range
-    hipAngle: { min: 80, max: 180, mean: 170, std: 30 },   // standing or seated (90)
+    hipAngle: { min: 80, max: 180, mean: 135, std: 35 },   // standing (180) or seated (~90)
     shoulderAngle: { min: 90, max: 180, mean: 140, std: 30 },   // arms raised high
     torsoAngle: { min: 0, max: 25, mean: 8, std: 8 },    // mostly upright
-    hipKneeRatio: { min: 0.5, max: 1.1, mean: 0.97, std: 0.15 },
-    stanceWidth: { min: 0.1, max: 0.3, mean: 0.2, std: 0.05 },
+    hipKneeRatio: { min: 0.8, max: 1.2, mean: 1.0, std: 0.1 }, // balanced in both seated and standing
+    stanceWidth: { min: 0.1, max: 0.4, mean: 0.25, std: 0.1 }, // feet can be wide when seated
     handHeight: { min: 0.1, max: 0.7, mean: 0.4, std: 0.2 },  // hands ABOVE shoulders
     isHorizontal: { min: 0, max: 0.1, mean: 0.02, std: 0.02 }, // NOT horizontal
     armStraightness: { min: 0.1, max: 1.0, mean: 0.6, std: 0.25 },
