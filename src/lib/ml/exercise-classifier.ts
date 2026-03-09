@@ -109,34 +109,31 @@ export function extractFeatures(landmarks: PoseLandmark[]): number[] {
 
     // --- NEW EXPERT FEATURES ---
 
-    // 13. Hand-to-Hip Distance (normalized)
-    const handHipDx = handY - hipY; // vertical gap
-    const handDistToHip = Math.min(1, Math.abs(handHipDx)); // 0=hands at hips, 1=hands far away
+    // Euclidean distance helper
+    const dist = (p1: { x: number, y: number }, p2: { x: number, y: number }) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
-    // 14. Shoulder-Hip Lean (horizontal displacement)
-    const shoulderHipDx = Math.abs(shoulderMid.x - hipMid.x);
-    const shoulderHipKneePos = Math.min(1, shoulderHipDx * 2);
-
-    // 15. Hands in front (horizontal displacement from shoulders)
-    const handX = (landmarks[15].x + landmarks[16].x) / 2;
-    const handsFrontDx = Math.abs(handX - shoulderMid.x);
-    const handsInFront = Math.min(1, handsFrontDx * 3);
-
-    // 16. Shin Angle / Lean
+    const handMid = { x: (landmarks[15].x + landmarks[16].x) / 2, y: (landmarks[15].y + landmarks[16].y) / 2 };
     const kneeMid = { x: (landmarks[25].x + landmarks[26].x) / 2, y: (landmarks[25].y + landmarks[26].y) / 2 };
-    const dxShin = ankleMid.x - kneeMid.x;
-    const dyShin = ankleMid.y - kneeMid.y;
-    const shinAngleRaw = Math.abs(Math.atan2(dyShin, dxShin) * 180 / Math.PI);
-    const ankleToKneeLean = Math.abs(90 - shinAngleRaw) / 90;
 
-    // 17. Hand-to-Knee Distance
-    const handKneeDy = Math.abs(handY - kneeMid.y);
-    const handDistToKnee = Math.min(1, handKneeDy * 2);
 
-    // 18. Head Position (relative to shoulders)
-    const headY = (landmarks[0].y); // nose
-    const headPosRel = shoulderY - headY;
-    const headPosition = Math.max(0, Math.min(1, headPosRel + 0.5));
+    // 13. Hand-to-Hip Distance
+    const handDistToHip = Math.min(1, dist(handMid, hipMid));
+
+    // 14. Hip-to-Knee X Displacement (Structural Depth)
+    const hipToKneeX = Math.min(1, Math.abs(hipMid.x - kneeMid.x));
+
+    // 15. Knee-to-Ankle X Displacement (Shin lean)
+    const kneeToAnkleX = Math.min(1, Math.abs(kneeMid.x - ankleMid.x));
+
+    // 16. Hand-to-Knee Distance
+    const handDistToKnee = Math.min(1, dist(handMid, kneeMid));
+
+    // 17. Hand-to-Ankle Distance
+    const handDistToAnkle = Math.min(1, dist(handMid, ankleMid));
+
+    // 18. Head Position (relative to shoulders Y) - mostly just posture
+    const headY = landmarks[0].y;
+    const headPosition = Math.max(0, Math.min(1, (shoulderMid.y - headY) + 0.5));
 
     // Normalize features to match training data scaling
     return [
@@ -153,10 +150,10 @@ export function extractFeatures(landmarks: PoseLandmark[]): number[] {
         wristBelowHip,
         symmetry,
         handDistToHip,
-        shoulderHipKneePos,
-        handsInFront,
-        ankleToKneeLean,
+        hipToKneeX,
+        kneeToAnkleX,
         handDistToKnee,
+        handDistToAnkle,
         headPosition
     ];
 }
