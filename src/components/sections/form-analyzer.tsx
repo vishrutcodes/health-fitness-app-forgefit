@@ -236,41 +236,59 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
     }
 
     // ===================== 5. LAT PULLDOWN =====================
+    // Multi-phase: reaching up, pulling down, fully contracted
     {
         let c = 0;
         if (seated) c += 20;
+        if (!standing) c += 10;
         if (avgShoulder > 80) c += 10;
         if (avgShoulder > 120) c += 10;
-        if (avgElbow < 130) c += 10;
-        if (avgElbow < 100) c += 10;
-        if (handsRel > -0.05) c += 10;
-        if (handsRel > 0.05) c += 5;
-        if (torsoAng < 25) c += 10;
-        if (avgKnee > 70 && avgKnee < 120) c += 10;
-        if (!standing) c += 5;
-        if (standing && torsoAng < 10) c -= 15;
+        if (avgElbow < 140) c += 10;
+        if (avgElbow < 110) c += 10;
+        if (avgElbow < 80) c += 5;
+        if (handsRel > -0.1) c += 5;
+        if (handsRel > 0.0) c += 5;
+        if (torsoAng < 30) c += 10;
+        if (avgKnee > 60 && avgKnee < 130) c += 10;
+        const shoulderW = Math.abs(landmarks[11].x - landmarks[12].x);
+        if (shoulderW > 0.1) c += 5;
+        if (standing && torsoAng < 10) c -= 10;
         if (horizontal) c -= 30;
-        if (avgShoulder < 50) c -= 15;
+        if (avgShoulder < 40 && avgElbow > 150) c -= 10;
         scores.push({ name: "Lat Pulldown", confidence: Math.max(0, c) });
     }
 
     // ===================== 6. PULL-UP =====================
+    // 3 phases: dead hang / mid-pull / top + front/side/BACK camera
     {
         let c = 0;
-        if (handsRel > 0.05) c += 15;
-        if (handsRel > 0.15) c += 15;
-        if (avgShoulder > 130) c += 15;
-        if (avgShoulder > 160) c += 10;
-        if (avgElbow < 120) c += 10;
-        if (avgElbow < 90) c += 10;
-        if (torsoAng < 20) c += 10;
-        if (avgKnee > 130) c += 5;
-        if (avgHip > 140) c += 5;
-        if (!seated) c += 5;
+        // PHASE 1 (Dead hang): straight arms overhead
+        if (avgElbow > 150 && avgShoulder > 120) c += 15;
+        // PHASE 2 (Mid-pull): elbows bending
+        if (avgElbow < 130 && avgElbow > 70) c += 15;
+        // PHASE 3 (Top): deeply bent elbows
+        if (avgElbow < 70) c += 20;
+        // Hands above or near shoulder level
+        if (handsRel > -0.05) c += 10;
+        if (handsRel > 0.1) c += 10;
+        // Shoulder angle high
+        if (avgShoulder > 90) c += 10;
+        if (avgShoulder > 140) c += 5;
+        // Vertical torso
+        if (torsoAng < 25) c += 10;
+        // Legs hanging or slightly bent
+        if (avgKnee > 120) c += 5;
+        if (avgHip > 130) c += 5;
+        // Back camera: visible shoulder spread while gripping bar
+        const pullUpSW = Math.abs(landmarks[11].x - landmarks[12].x);
+        if (pullUpSW > 0.1 && avgShoulder > 80) c += 5;
+        // Wrists above shoulders (on bar)
+        const wristY = (landmarks[15].y + landmarks[16].y) / 2;
+        if (wristY < shoulderY) c += 5;
+        // PENALTIES
         if (horizontal) c -= 30;
-        if (handsRel < -0.05) c -= 25;
-        if (avgShoulder < 80) c -= 20;
-        if (avgElbow > 170) c -= 10;
+        if (seated) c -= 15;
+        if (avgShoulder < 50 && avgElbow > 160) c -= 15;
         scores.push({ name: "Pull-Up", confidence: Math.max(0, c) });
     }
 
@@ -372,31 +390,20 @@ function scoreAllExercises(landmarks: PoseLandmark[]): ExerciseScore[] {
     return scores.sort((a, b) => b.confidence - a.confidence);
 }
 
-/* ---------- Exercise detection â€” STRICT multi-gate validation ---------- */
+/* ---------- Exercise detection - relaxed for real-world gym videos ---------- */
 function detectExercise(landmarks: PoseLandmark[]): string {
     const scores = scoreAllExercises(landmarks);
     const top = scores[0];
     const second = scores[1];
     const standingScore = scores.find(s => s.name === "Standing Position")?.confidence || 0;
 
-    if (top.confidence < 45) return "Unknown Exercise";
-    if (top.name !== "Standing Position" && (top.confidence - standingScore) < 12) return "Unknown Exercise";
-    if (top.name !== "Standing Position" && (top.confidence - second.confidence) < 8) return "Unknown Exercise";
+    // Log for debugging (browser console)
+    console.log(`[FormAnalyzer] Top: ${top.name}=${top.confidence}, 2nd: ${second.name}=${second.confidence}, Standing=${standingScore}`);
 
-    // Movement intensity check
-    const lk = angle(landmarks[23], landmarks[25], landmarks[27]);
-    const rk = angle(landmarks[24], landmarks[26], landmarks[28]);
-    const le = angle(landmarks[11], landmarks[13], landmarks[15]);
-    const re = angle(landmarks[12], landmarks[14], landmarks[16]);
-    const lh = angle(landmarks[11], landmarks[23], landmarks[25]);
-    const rh = angle(landmarks[12], landmarks[24], landmarks[26]);
-    const hasKnee = Math.min(lk, rk) < 145;
-    const hasElbow = Math.min(le, re) < 120;
-    const hasHip = Math.min(lh, rh) < 140;
-    const hasArms = handHeightRelShoulder(landmarks) > 0.03;
-    const isHoriz = isBodyHorizontal(landmarks);
-    const hasLean = torsoAngleFromVertical(landmarks) > 25;
-    if ([hasKnee, hasElbow, hasHip, hasArms, isHoriz, hasLean].filter(Boolean).length < 1) return "Unknown Exercise";
+    // Relaxed thresholds - real gym videos have imperfect angles
+    if (top.confidence < 25) return "Unknown Exercise";
+    if (top.name !== "Standing Position" && (top.confidence - standingScore) < 5) return "Unknown Exercise";
+    if (top.name !== "Standing Position" && (top.confidence - second.confidence) < 3) return "Unknown Exercise";
 
     if (top.name === "Standing Position") return "Unknown Exercise";
     return top.name;
@@ -675,7 +682,7 @@ export function FormAnalyzer() {
 
             // Sample multiple frames across the video
             const duration = video.duration;
-            const numSamples = 8;
+            const numSamples = 16;
             const allResults: AnalysisResult[] = [];
             const frameClassifications: string[] = [];
             let lastAllScores: ExerciseScore[] = [];
@@ -765,9 +772,9 @@ export function FormAnalyzer() {
             const topScore = lastAllScores.length > 0 ? lastAllScores[0] : null;
             const secondScore = lastAllScores.length > 1 ? lastAllScores[1] : null;
             if (topScore && (
-                topScore.confidence < 50 ||
-                (topScore.name !== "Standing Position" && (topScore.confidence - standingScoreVal) < 15) ||
-                (secondScore && topScore.name !== "Standing Position" && (topScore.confidence - secondScore.confidence) < 10)
+                topScore.confidence < 30 ||
+                (topScore.name !== "Standing Position" && (topScore.confidence - standingScoreVal) < 8) ||
+                (secondScore && topScore.name !== "Standing Position" && (topScore.confidence - secondScore.confidence) < 5)
             )) {
                 setResult({
                     exercise: "Unrecognized Movement",
