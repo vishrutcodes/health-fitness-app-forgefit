@@ -38,6 +38,7 @@ interface AdvancedRoadmap {
 export function RoadmapSection() {
     const [start, setStart] = useState("");
     const [end, setEnd] = useState("");
+    const [personalDetails, setPersonalDetails] = useState("");
     const [timeframe, setTimeframe] = useState("");
     const [equipment, setEquipment] = useState("");
     const [roadmap, setRoadmap] = useState<AdvancedRoadmap | null>(null);
@@ -54,7 +55,7 @@ export function RoadmapSection() {
             const res = await fetch("/api/ai/roadmap", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ start, end, timeframe, equipment }),
+                body: JSON.stringify({ start, end, personalDetails, timeframe, equipment }),
             });
             const data = await res.json();
             if (data.error) {
@@ -108,9 +109,13 @@ export function RoadmapSection() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid gap-6 sm:grid-cols-2">
+                                <div className="sm:col-span-2 space-y-2">
+                                    <Label className="text-slate-300">Biometrics & Demographics (Crucial for Precision)</Label>
+                                    <Input placeholder="Enter your height, weight, age, gender, current activity level for better results" value={personalDetails} onChange={(e) => setPersonalDetails(e.target.value)} className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange" />
+                                </div>
                                 <div className="space-y-2">
                                     <Label className="text-slate-300">Detailed Starting Point</Label>
-                                    <Input placeholder="e.g. 85kg, 22% bf, bench 60kg, sedentary job" value={start} onChange={(e) => setStart(e.target.value)} className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange" />
+                                    <Input placeholder="e.g. Can bench 60kg, can run 1 mile, sedentary job" value={start} onChange={(e) => setStart(e.target.value)} className="bg-slate-900/50 border-forge-border text-white placeholder:text-slate-500 focus:border-forge-orange" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-slate-300">Exact End Goal</Label>

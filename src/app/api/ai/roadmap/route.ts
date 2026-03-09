@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
 
 export async function POST(req: NextRequest) {
-    try {
-        const { start, end, timeframe, equipment } = await req.json();
+  try {
+    const { start, end, personalDetails, timeframe, equipment } = await req.json();
 
-        const completion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                {
-                    role: "system",
-                    content: `You are an elite, world-class strength and conditioning coach and clinical nutritionist. 
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `You are an elite, world-class strength and conditioning coach and clinical nutritionist. 
 You do not give generic advice. You program strict, absolute protocols for athletes.
-The user will provide their starting point, their exact goal, their timeframe, and available equipment.
+The user will provide their precise biometrics (Height, Weight, Age, Gender, Activity Level) along with their starting point and goals.
+
+CRITICAL INSTRUCTION: You MUST calculate their exact required daily calories and macros (Protein, Carbs, Fats) mathematically based on their specific biometric data. You MUST prescribe supplement dosages based on their weight and gender.
 
 Provide a ruthlessly effective, highly specific roadmap.
 
@@ -49,34 +51,38 @@ Return ONLY valid JSON matching this exact structure:
   ]
 }
 Ensure the math is sound. Output ONLY the JSON object. Do not wrap in markdown tags if possible, just the raw braces.`,
-                },
-                {
-                    role: "user",
-                    content: `Create a ${timeframe}-month elite coaching protocol. Starting point: ${start}. Goal: ${end}. Equipment: ${equipment}.`,
-                },
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.3,
-            max_tokens: 2048,
-        });
+        },
+        {
+          role: "user",
+          content: `Create a ${timeframe}-month elite coaching protocol.
+BIOMETRICS & DEMOGRAPHICS: ${personalDetails}
+STARTING CAPABILITIES: ${start}
+EXACT END GOAL: ${end}
+AVAILABLE EQUIPMENT: ${equipment}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+      max_tokens: 2048,
+    });
 
-        const text = completion.choices[0]?.message?.content || "";
-        // Extract JSON
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const data = JSON.parse(jsonMatch[0]);
-            return NextResponse.json(data);
-        }
-
-        return NextResponse.json(
-            { error: "Protocol generation failed. Invalid schema returned." },
-            { status: 500 }
-        );
-    } catch (error) {
-        console.error("Advanced Roadmap error:", error);
-        return NextResponse.json(
-            { error: "Failed to program roadmap. Please try again." },
-            { status: 500 }
-        );
+    const text = completion.choices[0]?.message?.content || "";
+    // Extract JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const data = JSON.parse(jsonMatch[0]);
+      return NextResponse.json(data);
     }
+
+    return NextResponse.json(
+      { error: "Protocol generation failed. Invalid schema returned." },
+      { status: 500 }
+    );
+  } catch (error) {
+    console.error("Advanced Roadmap error:", error);
+    return NextResponse.json(
+      { error: "Failed to program roadmap. Please try again." },
+      { status: 500 }
+    );
+  }
 }
