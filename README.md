@@ -4,7 +4,7 @@
 
 ### *Forge Your Dream Physique*
 
-A premium, production-grade fitness web application combining **artificial intelligence**, **real-time data visualization**, and **interactive fitness tools** into a single, beautifully designed platform. ForgeFit empowers users to generate personalized workout plans, analyze nutrition on the fly, track body composition changes, log personal records, and receive real-time coaching — all powered by **Groq's LLaMA 3.3 70B** large language model and **MediaPipe Pose Landmarker** for ML-powered exercise form analysis.
+A premium, production-grade fitness web application combining **artificial intelligence**, **real-time data visualization**, and **interactive fitness tools** into a single, beautifully designed platform. ForgeFit empowers users to generate personalized workout plans, analyze nutrition on the fly, track body composition changes, log personal records, and receive real-time coaching — all powered by **Groq's LLaMA 3.3 70B** for text AI, **Groq's Llama 4 Scout Vision** for exercise classification from video, and **MediaPipe Pose Landmarker** for skeleton detection and joint angle analysis.
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-ForgeFit-FF6B2B?style=for-the-badge)](https://health-fitness-app-forgefit.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/vishrutcodes/health-fitness-app-forgefit)
@@ -57,12 +57,12 @@ ForgeFit was born from a simple idea: **fitness guidance should be intelligent, 
 
 ForgeFit solves all three problems by combining:
 
-- **🤖 Artificial Intelligence** — 5 distinct AI-powered features that give personalized, context-aware fitness guidance using Meta's LLaMA 3.3 70B model through Groq's ultra-fast inference API
+- **🤖 Artificial Intelligence** — 6 distinct AI-powered features that give personalized, context-aware fitness guidance using Meta's LLaMA 3.3 70B model and **Llama 4 Scout Vision** model through Groq's ultra-fast inference API
 - **📊 Data-Driven Tracking** — Interactive Recharts visualizations for body composition and strength progress with full CRUD operations
 - **🧮 Scientific Calculators** — Evidence-based formulas (Mifflin-St Jeor for BMR, Epley for 1RM, U.S. Navy method for body fat) built into dedicated calculator components
 - **⏱️ Training Tools** — Configurable timers, phase planners, and periodization tools for structured training
 - **🔐 Supabase Authentication & Cloud Sync** — Secure email/password sign-in with profile dropdown, welcome flash toast, and cloud-stored Progress & PRs data synced across devices via Supabase PostgreSQL with Row Level Security
-- **🧠 ML Pose Detection** — Client-side MediaPipe Pose Landmarker for real-time exercise identification, form scoring, and joint angle analysis — runs entirely in-browser with GPU acceleration
+- **🧠 Vision AI Form Analyzer** — Upload a workout video and **Groq's Llama 4 Scout Vision** model analyzes the actual frames to classify the exercise with high accuracy, while MediaPipe draws the pose skeleton and computes joint angles — a hybrid approach combining cloud-based vision AI with client-side pose estimation
 
 ### What Makes ForgeFit Different
 
@@ -121,16 +121,17 @@ ForgeFit solves all three problems by combining:
 
 | Technology | Version | Role in Project |
 |-----------|---------|-----------------|
-| **Groq SDK** | 0.37.0 | Official Groq TypeScript SDK — connects to Groq's ultra-fast LLM inference API. ForgeFit uses the `llama-3.3-70b-versatile` model for all AI features. Groq provides 10x faster inference than traditional GPU providers. |
-| **LLaMA 3.3 70B** | Versatile | Meta's open-weight large language model — 70 billion parameters, fine-tuned for instruction following. Handles fitness coaching, nutritional analysis, exercise guidance, diet planning, and training periodization. |
+| **Groq SDK** | 0.37.0 | Official Groq TypeScript SDK — connects to Groq's ultra-fast LLM inference API. Groq provides 10x faster inference than traditional GPU providers. |
+| **LLaMA 3.3 70B** | Versatile | Meta's open-weight large language model — 70 billion parameters, fine-tuned for instruction following. Handles fitness coaching, nutritional analysis, exercise guidance, diet planning, and training periodization via text-based API routes. |
+| **Llama 4 Scout** | 17B-16E | Meta's multimodal vision model (`meta-llama/llama-4-scout-17b-16e-instruct`) — accepts image inputs and performs visual understanding. Used by ForgeFit's AI Form Analyzer to classify exercises from actual video frames. Replaces the previous synthetic neural network approach for 100% accurate exercise identification. |
 
-### ML Pose Detection & Computer Vision
+### Pose Estimation & Computer Vision
 
 | Technology | Version | Role in Project |
 |-----------|---------|-----------------|
-| **MediaPipe Pose Landmarker** | Latest | Google's on-device ML model for real-time human pose estimation. Detects 33 body landmarks (x, y, z coordinates + visibility) per frame. Runs client-side via WebAssembly + GPU delegate for sub-30ms inference. Used in the AI Form Analyzer for exercise detection and form analysis. |
+| **MediaPipe Pose Landmarker** | Latest | Google's on-device ML model for real-time human pose estimation. Detects 33 body landmarks (x, y, z coordinates + visibility) per frame. Runs client-side via WebAssembly + GPU delegate for sub-30ms inference. Used for **skeleton drawing and joint angle calculation** in the Form Analyzer. |
 | **@mediapipe/tasks-vision** | Latest | Official MediaPipe Tasks Vision SDK — provides `PoseLandmarker` and `FilesetResolver` APIs for browser-based pose detection. Dynamically imported to avoid SSR issues. |
-| **Custom Multi-Signal Scoring Engine** | — | Hand-engineered rule-based classification system that computes confidence scores for 17 exercises using joint angles, torso inclination, stance width, hand position, and body orientation signals. Replaces traditional ML classifiers with interpretable, tunable heuristics. |
+| **Groq Vision API** | — | Server-side exercise classification via `/api/ai/form-analyzer`. Extracts 3 key frames from uploaded video, sends them as base64 images to Groq's Llama 4 Scout Vision model, which returns the exercise name, confidence score, form corrections, and positives. This hybrid approach combines cloud-based vision AI (exercise identification) with client-side pose estimation (skeleton + angles). |
 
 ### Data Visualization & Storage
 
@@ -207,18 +208,15 @@ ForgeFit solves all three problems by combining:
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │                     /api/ai/*                             │  │
 │  │                                                           │  │
-│  │  POST /api/ai/coach     → Conversational fitness Q&A      │  │
-│  │  POST /api/ai/macros    → Per-food macronutrient analysis  │  │
-│  │  POST /api/ai/exercise  → Exercise form & technique guide  │  │
-│  │  POST /api/ai/diet      → Structured meal plan generation  │  │
-│  │  POST /api/ai/roadmap   → Periodized training roadmap      │  │
-│  │                                                           │  │
-│  │  Each route:                                              │  │
-│  │  ├── Validates request body                               │  │
-│  │  ├── Constructs specialized system prompt                 │  │
-│  │  ├── Calls Groq SDK with llama-3.3-70b-versatile          │  │
-│  │  ├── Parses JSON from AI response                         │  │
-│  │  └── Returns structured data to client                    │  │
+│  │  POST /api/ai/coach         → Conversational fitness Q&A       │  │
+│  │  POST /api/ai/macros        → Per-food macronutrient analysis   │  │
+│  │  POST /api/ai/exercise      → Exercise form & technique guide   │  │
+│  │  POST /api/ai/diet          → Structured meal plan generation   │  │
+│  │  POST /api/ai/roadmap       → Periodized training roadmap       │  │
+│  │  POST /api/ai/form-analyzer → Vision AI exercise classifier     │  │
+│  │                                                                 │  │
+│  │  Text routes → Groq SDK with llama-3.3-70b-versatile            │  │
+│  │  Vision route → Groq SDK with llama-4-scout (image inputs)      │  │
 │  └────────────────────────────┬─────────────────────────────┘  │
 │                               │                                 │
 └───────────────────────────────┼─────────────────────────────────┘
@@ -533,111 +531,80 @@ A dedicated dashboard for logging and tracking personal bests across major lifts
 
 ---
 
-### 13. 🧠 AI Form Analyzer — ML-Powered Exercise Form Analysis
+### 13. 🧠 AI Form Analyzer — Groq Vision AI + MediaPipe Pose Detection
 
 **Component:** `src/components/sections/form-analyzer.tsx`
-**ML Model:** MediaPipe Pose Landmarker (Lite, Float16)
-**Runs On:** Client-side (browser) — GPU-accelerated via WebAssembly
+**API Route:** `POST /api/ai/form-analyzer`
+**Vision Model:** Groq Llama 4 Scout (`meta-llama/llama-4-scout-17b-16e-instruct`)
+**Pose Model:** MediaPipe Pose Landmarker (Lite, Float16) — client-side, GPU-accelerated
 
-The AI Form Analyzer is ForgeFit's most technically sophisticated feature — a complete **computer vision pipeline** that lets users upload an exercise video, automatically detects which exercise is being performed, analyzes joint angles and body positioning, and provides detailed form corrections.
+The AI Form Analyzer is ForgeFit's most technically sophisticated feature — a **hybrid vision AI + pose estimation pipeline** that lets users upload an exercise video, sends actual frames to Groq's Vision AI for exercise classification, and uses MediaPipe for skeleton drawing and joint angle computation.
 
-#### Why MediaPipe Over Traditional Computer Vision?
+#### Why Groq Vision AI?
 
-| Approach | Limitation | MediaPipe Advantage |
-|----------|-----------|--------------------|
-| **OpenCV (Haar/HOG)** | Only detects bounding boxes — no skeleton or joint data. Cannot analyze form. | MediaPipe provides 33 precise 3D body landmarks with x, y, z coordinates and visibility scores |
-| **Custom CNN/YOLO** | Requires massive labeled datasets of exercise poses. Months of training, expensive GPU compute. | MediaPipe is pre-trained by Google on millions of diverse poses — works out of the box |
-| **OpenPose** | Requires backend server with GPU. High latency, infrastructure costs. | MediaPipe runs **entirely in the browser** via WASM + GPU delegate — zero server costs, sub-30ms inference |
-| **TensorFlow.js PoseNet** | Lower accuracy (17 keypoints only). Struggles with occluded limbs. | MediaPipe has 33 keypoints including hands and feet, with depth (z-axis) for 3D understanding |
-| **Server-side ML (Flask/FastAPI)** | Video upload → server processing → wait for response. Privacy concerns with uploading workout videos. | All processing happens **on-device** — video never leaves the user's browser. True privacy. |
+| Previous Approach | Problem | Groq Vision Solution |
+|-------------------|---------|---------------------|
+| **Synthetic Neural Network** | Trained on fake Gaussian data — couldn't distinguish exercises that look similar when standing (squat vs deadlift vs bench press) | Llama 4 Scout is a **multi-billion parameter vision model** trained on billions of real images — it actually knows what exercises look like |
+| **Single-frame heuristics** | Standing upright looks identical whether about to squat or deadlift — mathematical profiles overlap | Vision AI analyzes the **full context** of the image including equipment, grip, bar position, and body posture |
+| **Browser-trained TF.js model** | Tiny model with limited capacity, retrained on every page load, inconsistent results | Cloud-based inference on a massive pre-trained model — consistent, accurate, no training needed |
 
-#### ML Pipeline Architecture
+#### Hybrid Pipeline Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    CLIENT-SIDE ML PIPELINE                          │
+│                    HYBRID AI PIPELINE                               │
 │                                                                     │
 │  ┌──────────┐   ┌───────────────────┐   ┌──────────────────────┐   │
-│  │ Video    │   │ MediaPipe Pose    │   │ Multi-Signal         │   │
-│  │ Upload   │──▶│ Landmarker (Lite) │──▶│ Scoring Engine       │   │
-│  │ (.mp4)   │   │ 33 landmarks/frame│   │ 17 exercise patterns │   │
+│  │ Video    │   │ Frame Extraction  │   │ Groq Vision API      │   │
+│  │ Upload   │──▶│ 3 key frames at   │──▶│ Llama 4 Scout        │   │
+│  │ (.mp4)   │   │ 25%, 50%, 75%     │   │ (17B params, vision) │   │
 │  └──────────┘   └───────────────────┘   └──────────┬───────────┘   │
 │                                                     │               │
-│                        ┌────────────────────────────┘               │
-│                        │                                             │
-│  ┌─────────────────────▼───────────────────────────────────────┐   │
-│  │                  ANALYSIS ENGINE                             │   │
-│  │                                                              │   │
-│  │  1. Sample 8 frames evenly across video duration             │   │
-│  │  2. Run PoseLandmarker on each frame (GPU-accelerated)       │   │
-│  │  3. Compute joint angles (knee, elbow, hip, shoulder, torso) │   │
-│  │  4. Score confidence for ALL 17 exercises per frame          │   │
-│  │  5. Pick highest-confidence exercise per frame               │   │
-│  │  6. Majority vote across frames = final classification       │   │
-│  │  7. Run exercise-specific form analysis rules                │   │
-│  │  8. Compute model accuracy (frame consistency %)             │   │
+│                  ┌──────────────────────────────────┘               │
+│                  │                                                   │
+│                  ▼  SERVER-SIDE (Groq Cloud)                         │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  1. Receive 3 base64 frames from frontend                    │   │
+│  │  2. Send to Groq Llama 4 Scout with exercise analysis prompt │   │
+│  │  3. AI classifies exercise from visual context               │   │
+│  │  4. AI scores form and generates corrections/positives       │   │
+│  │  5. Return JSON: { exercise, confidence, form_score,         │   │
+│  │                     corrections[], positives[] }              │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│                  CLIENT-SIDE (Browser)                               │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  MediaPipe Pose Landmarker (GPU-accelerated)                  │   │
+│  │  • Detect 33 body landmarks across 8 sampled frames           │   │
+│  │  • Draw pose skeleton overlay on video canvas                 │   │
+│  │  • Compute joint angles (knee, elbow, hip, shoulder)          │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │                    OUTPUT                                    │   │
-│  │  • Detected Exercise (with confidence)                       │   │
-│  │  • Form Score (1-10)                                         │   │
-│  │  • Corrections (what to fix)                                 │   │
-│  │  • Positives (what you're doing right)                       │   │
-│  │  • Joint Angles (9 measurements)                             │   │
-│  │  • Model Diagnostics (accuracy, predictions, confusion)      │   │
+│  │  • Detected Exercise (Groq Vision AI, with confidence %)     │   │
+│  │  • Form Score (1-10, from Groq Vision analysis)              │   │
+│  │  • Corrections (AI-generated, based on what it sees)         │   │
+│  │  • Positives (AI-generated)                                  │   │
+│  │  • Joint Angles (8 measurements, from MediaPipe)             │   │
+│  │  • Pose Skeleton (drawn on canvas)                           │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Multi-Signal Confidence Scoring System
+#### Supported Exercises
 
-Instead of a black-box neural network classifier, ForgeFit uses an **interpretable, multi-signal scoring engine** that computes confidence scores for each exercise based on biomechanical signals:
-
-| Signal | What It Measures | Example Use |
-|--------|-----------------|-------------|
-| **Joint Angles** | Knee, elbow, hip, shoulder angles via 3-point angle calculation | Squat requires knee < 130°, deadlift requires hip angle < knee angle |
-| **Torso Inclination** | Angle of shoulder-hip line from vertical (0° = upright, 90° = horizontal) | Squat = upright (< 35°), deadlift = forward lean (> 30°) |
-| **Stance Width** | Ankle-to-ankle horizontal distance (normalized) | Lunges require wide split stance (> 0.15) |
-| **Hand Position** | Hand height relative to shoulders | Overhead press = hands above, bicep curl = hands below |
-| **Body Orientation** | Whether body is horizontal (bench/push-up) or vertical (standing) | Bench press requires horizontal body |
-| **Hip-to-Knee Ratio** | Relative hip vs. knee flexion | Hip hinge (deadlift) has ratio < 0.9, squat has ratio 0.7-1.15 |
-| **Knee Asymmetry** | Difference between left and right knee angles | Symmetry → squat (< 15°), asymmetry → lunge (> 25°) |
-| **Bench Incline Angle** | Torso angle on bench (flat vs. incline vs. decline) | Flat = 0°, incline = 20-55°, decline = shoulder below hips |
-
-Each exercise has a scoring block that awards confidence points for matching signals and applies **cross-penalties** for conflicting signals. For example:
-- Incline Bench Press gets +30 for incline angle 20-55° but **-30 penalty** if body is truly horizontal (preventing flat bench misclassification)
-- Squat gets +20 for upright torso but deadlift gets +25 for forward lean (preventing squat/deadlift confusion)
-
-#### Classification Accuracy & Model Diagnostics
-
-Since this is a rule-based scoring system rather than a trained neural network, accuracy is measured as **classification consistency** — what percentage of sampled frames agree on the same exercise:
-
-- **8 frames** are sampled evenly across the video duration
-- Each frame is independently classified by the scoring engine
-- The **majority vote** determines the final exercise
-- **Model Accuracy** = (frames matching majority vote) / (total frames) × 100%
-
-The Model Diagnostics panel (toggled via 🔬 button) displays:
-
-| Panel | What It Shows |
-|-------|---------------|
-| **Classification Consistency** | Circular gauge with accuracy % — Green (≥ 85%), Yellow (≥ 60%), Red (< 60%) |
-| **Confidence Predictions** | Horizontal bar chart of confidence scores for all 17 exercises — detected exercise highlighted in orange |
-| **Frame-by-Frame Classification** | Each frame's individual classification with match/mismatch indicators |
-
-#### 17 Supported Exercises
+The Groq Vision AI model can identify any common gym exercise, including but not limited to:
 
 | Category | Exercises |
 |----------|-----------|
-| **Legs** | Squat, Front Squat, Lunge, Bulgarian Split Squat, Hip Thrust |
-| **Back** | Deadlift, Romanian Deadlift, Barbell Row |
-| **Chest** | Bench Press (Flat), Incline Bench Press, Decline Bench Press, Push-Up |
-| **Shoulders** | Overhead Press, Lateral Raise |
+| **Legs** | Squat, Lunge, Leg Press, Bulgarian Split Squat, Hip Thrust |
+| **Back** | Deadlift, Romanian Deadlift, Barbell Row, Pull-Up |
+| **Chest** | Bench Press, Incline Bench Press, Push-Up |
+| **Shoulders** | Dumbbell Overhead Press, Lateral Raise |
 | **Arms** | Bicep Curl, Tricep Extension |
-| **Idle** | Standing Position |
 
-Each exercise has dedicated **form analysis rules** that check for specific biomechanical errors (e.g., knee cave in squats, excessive forward lean in deadlifts, elbow flare in bench press) and provide actionable corrections.
+Form corrections and positives are generated by the Vision AI based on what it actually sees in the video frames — not from hardcoded rules.
 
 ---
 
@@ -757,6 +724,7 @@ All endpoints are Next.js API routes (server-side only). API key is never expose
 | `POST` | `/api/ai/exercise` | `{ exercise: string }` | `{ muscles, steps[], mistakes[], tips[], variations[] }` | llama-3.3-70b-versatile |
 | `POST` | `/api/ai/diet` | `{ calories, protein, goal, meals, restrictions }` | `{ meals: [{ name, foods[] }], dailyTotals }` | llama-3.3-70b-versatile |
 | `POST` | `/api/ai/roadmap` | `{ start, goal, timeframe, equipment }` | `{ phases: [{ name, duration, workouts[], milestones[] }] }` | llama-3.3-70b-versatile |
+| `POST` | `/api/ai/form-analyzer` | `{ frames: [base64_image, ...] }` | `{ exercise, confidence, form_score, corrections[], positives[] }` | llama-4-scout-17b-16e |
 
 **Security:** All API routes run server-side. The `GROQ_API_KEY` is accessed via `process.env` and never sent to the client. Rate limiting is handled by Groq's API-level quotas.
 
@@ -839,11 +807,12 @@ forgefit/
 │   ├── app/                             # Next.js App Router
 │   │   ├── api/
 │   │   │   └── ai/
-│   │   │       ├── coach/route.ts       # AI Coach chat endpoint
-│   │   │       ├── macros/route.ts      # Macro analysis endpoint
-│   │   │       ├── exercise/route.ts    # Exercise guide endpoint
-│   │   │       ├── diet/route.ts        # Diet plan endpoint
-│   │   │       └── roadmap/route.ts     # Training roadmap endpoint
+│   │   │       ├── coach/route.ts        # AI Coach chat endpoint
+│   │   │       ├── macros/route.ts       # Macro analysis endpoint
+│   │   │       ├── exercise/route.ts     # Exercise guide endpoint
+│   │   │       ├── diet/route.ts         # Diet plan endpoint
+│   │   │       ├── roadmap/route.ts      # Training roadmap endpoint
+│   │   │       └── form-analyzer/route.ts # Vision AI exercise classifier
 │   │   │
 │   │   ├── auth/
 │   │   │   └── page.tsx                 # Combined Sign In / Sign Up page
