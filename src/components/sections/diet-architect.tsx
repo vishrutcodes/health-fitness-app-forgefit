@@ -2,58 +2,83 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Utensils, RefreshCw, Layers, ShieldCheck } from "lucide-react";
+import { Loader2, Utensils, Layers, ShieldCheck, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { generateDietArchitecture, calculateFoodForMacro, DietPlan, DIET_OPTIONS } from "@/lib/diet-algorithm";
-import { LOCAL_NUTRITION_DB } from "@/lib/nutrition-db";
+
+interface AIMeal {
+    meal_name: string;
+    dish: string;
+    ingredients: string[];
+    protein: number;
+    carbs: number;
+    fat: number;
+    calories: number;
+}
+
+interface AIDietPlan {
+    targetCalories: number;
+    targetProtein: number;
+    targetCarbs: number;
+    targetFat: number;
+    meals: AIMeal[];
+}
 
 export function DietArchitect() {
     const [targetCalories, setTargetCalories] = useState("2500");
     const [targetProtein, setTargetProtein] = useState("180");
     const [numMeals, setNumMeals] = useState("4");
+    const [preferences, setPreferences] = useState("");
 
-    const [plan, setPlan] = useState<DietPlan | null>(null);
+    const [plan, setPlan] = useState<AIDietPlan | null>(null);
+    const [loading, setLoading] = useState(false);
 
-    const handleGenerate = () => {
+    const handleGenerate = async () => {
         const cals = parseInt(targetCalories);
         const pro = parseInt(targetProtein);
         const meals = parseInt(numMeals);
+
         if (cals > 0 && pro > 0 && meals > 0) {
-            setPlan(generateDietArchitecture(cals, pro, meals));
+            setLoading(true);
+            try {
+                // Calculate implicit targets to show in the UI header
+                const proteinCal = pro * 4;
+                const remainingCal = cals - proteinCal;
+                const fatCal = cals * 0.25;
+                const fat = Math.round(fatCal / 9);
+                const carbs = Math.round((remainingCal - fatCal) / 4);
+
+                const res = await fetch("/api/ai/diet", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        target_calories: cals,
+                        target_protein: pro,
+                        target_carbs: carbs,
+                        target_fat: fat,
+                        num_meals: meals,
+                        preferences: preferences || "No specific preferences"
+                    })
+                });
+                const responseData = await res.json();
+
+                if (responseData.success && responseData.data.meals) {
+                    setPlan({
+                        targetCalories: cals,
+                        targetProtein: pro,
+                        targetCarbs: carbs,
+                        targetFat: fat,
+                        meals: responseData.data.meals
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to generate diet:", error);
+            } finally {
+                setLoading(false);
+            }
         }
-    };
-
-    const handleSwap = (mealIndex: number, foodIndex: number, currentMacroType: 'protein' | 'carbs' | 'fat') => {
-        if (!plan) return;
-
-        // Pick next random food of same exact macro category
-        const options = DIET_OPTIONS[currentMacroType];
-        const currentFoodId = plan.meals[mealIndex].foods[foodIndex].foodId;
-
-        let newFoodId = options[Math.floor(Math.random() * options.length)];
-        while (newFoodId === currentFoodId && options.length > 1) {
-            newFoodId = options[Math.floor(Math.random() * options.length)];
-        }
-
-        const newPlan = { ...plan };
-        const meal = newPlan.meals[mealIndex];
-
-        // Grab current food IDs for the meal
-        const newFoodIds = meal.foods.map(f => f.foodId);
-        newFoodIds[foodIndex] = newFoodId; // Swap the requested one
-
-        // Rebuild cascading meal securely
-        const proteinFood = calculateFoodForMacro('protein', newFoodIds[0], meal.targetProtein);
-        const remainingCarbTarget = Math.max(0, meal.targetCarbs - proteinFood.carbs);
-        const carbFood = calculateFoodForMacro('carbs', newFoodIds[1], remainingCarbTarget);
-        const remainingFatTarget = Math.max(0, meal.targetFat - proteinFood.fat - carbFood.fat);
-        const fatFood = calculateFoodForMacro('fat', newFoodIds[2], remainingFatTarget);
-
-        meal.foods = [proteinFood, carbFood, fatFood];
-        setPlan(newPlan);
     };
 
     return (
@@ -62,10 +87,10 @@ export function DietArchitect() {
                 <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-forge-orange/10 text-forge-orange text-sm font-medium mb-4 border border-forge-orange/20">
                         <ShieldCheck className="h-4 w-4" />
-                        0% Math Deviation Verified
+                        AI-Powered Macro Precision
                     </div>
                     <h2 className="text-4xl font-bold text-white">Diet Architect</h2>
-                    <p className="mt-3 text-slate-400">Deterministic linear programming guarantees exactly 100% macro compliance.</p>
+                    <p className="mt-3 text-slate-400">Generative AI creates mathematically sound, realistic dishes tailored to your exact targets.</p>
                 </motion.div>
 
                 <div className="grid md:grid-cols-3 gap-8">
@@ -110,11 +135,25 @@ export function DietArchitect() {
                                         className="bg-slate-900/50 border-forge-border text-white focus:border-forge-orange font-mono"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label className="text-slate-300">Preferences / Allergies</Label>
+                                    <Input
+                                        placeholder="e.g. 'Vegan, high volume' or 'No nuts'"
+                                        value={preferences}
+                                        onChange={(e) => setPreferences(e.target.value)}
+                                        className="bg-slate-900/50 border-forge-border text-white focus:border-forge-orange"
+                                    />
+                                </div>
                                 <Button
                                     onClick={handleGenerate}
+                                    disabled={loading}
                                     className="w-full bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-bold h-12 text-lg shadow-lg shadow-forge-orange/20 mt-4"
                                 >
-                                    <Utensils className="mr-2 h-5 w-5" /> Compile Diet Plan
+                                    {loading ? (
+                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Compiling AI Plan...</>
+                                    ) : (
+                                        <><Sparkles className="mr-2 h-5 w-5" /> Generate Diet Plan</>
+                                    )}
                                 </Button>
                             </CardContent>
                         </Card>
@@ -127,7 +166,7 @@ export function DietArchitect() {
                                 <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center text-center p-12 glass-card rounded-2xl border border-forge-border">
                                     <Utensils className="h-16 w-16 text-slate-600 mb-4" />
                                     <h3 className="text-xl font-bold text-slate-300">No Blueprint Active</h3>
-                                    <p className="text-slate-500 mt-2">Enter your constraints and compile your plan to generate a mathematically perfect diet structure.</p>
+                                    <p className="text-slate-500 mt-2">Enter your constraints and compile your AI-generated meal plan.</p>
                                 </motion.div>
                             ) : (
                                 <motion.div key="plan" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
@@ -153,54 +192,36 @@ export function DietArchitect() {
 
                                     {/* Meals Array */}
                                     <div className="space-y-4">
-                                        {plan.meals.map((meal, mIdx) => {
-                                            const actualCals = Math.round(meal.foods.reduce((acc, f) => acc + f.calories, 0));
-                                            const actualPro = meal.foods.reduce((acc, f) => acc + f.protein, 0).toFixed(1);
-                                            const actualCarbs = meal.foods.reduce((acc, f) => acc + f.carbs, 0).toFixed(1);
-                                            const actualFat = meal.foods.reduce((acc, f) => acc + f.fat, 0).toFixed(1);
-
-                                            return (
-                                                <div key={meal.id} className="glass-card rounded-2xl border border-forge-border overflow-hidden">
-                                                    <div className="bg-slate-900/50 px-5 py-3 border-b border-forge-border flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                                                        <h3 className="font-bold text-white text-lg">Meal {meal.id}</h3>
-                                                        <div className="flex gap-2 items-center">
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Target: {meal.targetCalories}kcal</span>
-                                                            <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md border border-emerald-400/20">
-                                                                True Total: {actualCals} kcal | {actualPro}g P, {actualCarbs}g C, {actualFat}g F
-                                                            </span>
-                                                        </div>
+                                        {plan.meals.map((meal, mIdx) => (
+                                            <div key={mIdx} className="glass-card rounded-2xl border border-forge-border overflow-hidden">
+                                                <div className="bg-slate-900/50 px-5 py-4 border-b border-forge-border flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                                                    <div>
+                                                        <h3 className="font-bold text-white text-lg">{meal.meal_name}</h3>
+                                                        <p className="text-sm font-medium text-forge-orange mt-0.5">{meal.dish}</p>
                                                     </div>
-                                                    <div className="p-2 space-y-2">
-                                                        {meal.foods.map((food, fIdx) => (
-                                                            <div key={fIdx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors gap-3">
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-white font-medium">{food.name}</span>
-                                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-forge-orange/20 text-forge-orange font-mono">
-                                                                            {food.weightGrams}g
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex flex-wrap items-center gap-3 mt-1 text-xs font-mono">
-                                                                        <span className="text-blue-400">{food.protein}g Protein</span>
-                                                                        <span className="text-emerald-400">{food.carbs}g Carbs</span>
-                                                                        <span className="text-amber-400">{food.fat}g Fat</span>
-                                                                        <span className="text-slate-500">• {food.calories} kcal</span>
-                                                                    </div>
-                                                                </div>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => handleSwap(mIdx, fIdx, food.primaryMacro)}
-                                                                    className="shrink-0 text-slate-400 hover:text-white hover:bg-white/10 text-xs"
-                                                                >
-                                                                    <RefreshCw className="mr-1 h-3 w-3" /> Swap Match
-                                                                </Button>
-                                                            </div>
-                                                        ))}
+                                                    <div className="flex gap-2 items-center shrink-0">
+                                                        <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-md border border-emerald-400/20 shadow-sm">
+                                                            {meal.calories} kcal | {meal.protein}g P, {meal.carbs}g C, {meal.fat}g F
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="p-5">
+                                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                        <Utensils className="h-3 w-3" /> Ingredients
+                                                    </h4>
+                                                    <div className="bg-slate-900/40 rounded-xl p-4 border border-white/5 line-clamp-none">
+                                                        <ul className="space-y-2">
+                                                            {meal.ingredients.map((ing, iIdx) => (
+                                                                <li key={iIdx} className="flex gap-3 items-start text-sm text-slate-300">
+                                                                    <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0"></div>
+                                                                    <span>{ing}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </motion.div>
                             )}
