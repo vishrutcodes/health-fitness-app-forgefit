@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Utensils, Layers, ShieldCheck, Sparkles } from "lucide-react";
+import { Loader2, Utensils, Layers, ShieldCheck, Sparkles, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,7 @@ export function DietArchitect() {
 
     const [plan, setPlan] = useState<AIDietPlan | null>(null);
     const [loading, setLoading] = useState(false);
+    const [swappingIndex, setSwappingIndex] = useState<number | null>(null);
 
     const handleGenerate = async () => {
         const cals = parseInt(targetCalories);
@@ -78,6 +79,36 @@ export function DietArchitect() {
             } finally {
                 setLoading(false);
             }
+        }
+    };
+
+    const handleSwap = async (mIdx: number, mealToReplace: AIMeal) => {
+        if (!plan) return;
+        setSwappingIndex(mIdx);
+
+        try {
+            const res = await fetch("/api/ai/diet/swap", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    targetProtein: mealToReplace.protein,
+                    targetCarbs: mealToReplace.carbs,
+                    targetFat: mealToReplace.fat,
+                    avoidDish: mealToReplace.dish,
+                    mealName: mealToReplace.meal_name
+                })
+            });
+            const responseData = await res.json();
+
+            if (responseData.success && responseData.meal) {
+                const newPlan = { ...plan };
+                newPlan.meals[mIdx] = responseData.meal;
+                setPlan(newPlan);
+            }
+        } catch (error) {
+            console.error("Failed to swap meal:", error);
+        } finally {
+            setSwappingIndex(null);
         }
     };
 
@@ -196,13 +227,29 @@ export function DietArchitect() {
                                             <div key={mIdx} className="glass-card rounded-2xl border border-forge-border overflow-hidden">
                                                 <div className="bg-slate-900/50 px-5 py-4 border-b border-forge-border flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                                                     <div>
-                                                        <h3 className="font-bold text-white text-lg">{meal.meal_name}</h3>
+                                                        <div className="flex items-center gap-3">
+                                                            <h3 className="font-bold text-white text-lg">{meal.meal_name}</h3>
+                                                            {swappingIndex === mIdx && (
+                                                                <span className="flex items-center text-xs text-forge-orange font-medium animate-pulse">
+                                                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Swapping...
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <p className="text-sm font-medium text-forge-orange mt-0.5">{meal.dish}</p>
                                                     </div>
-                                                    <div className="flex gap-2 items-center shrink-0">
+                                                    <div className="flex gap-2 items-center flex-wrap shrink-0">
                                                         <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-md border border-emerald-400/20 shadow-sm">
                                                             {meal.calories} kcal | {meal.protein}g P, {meal.carbs}g C, {meal.fat}g F
                                                         </span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={swappingIndex !== null}
+                                                            onClick={() => handleSwap(mIdx, meal)}
+                                                            className="h-8 shrink-0 text-slate-400 hover:text-white hover:bg-white/10 text-xs border border-transparent hover:border-white/10"
+                                                        >
+                                                            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${swappingIndex === mIdx ? 'animate-spin' : ''}`} /> Swap
+                                                        </Button>
                                                     </div>
                                                 </div>
                                                 <div className="p-5">
