@@ -251,12 +251,12 @@ export function FormAnalyzer() {
                     </div>
                     <h2 className="text-4xl font-bold text-white">AI Form Analyzer</h2>
                     <p className="mt-3 text-slate-400 max-w-2xl mx-auto">
-                        Upload a video and our <span className="text-forge-orange font-medium">TensorFlow.js neural network</span> will classify your exercise and analyze your form in real-time.
+                        Upload a video and our <span className="text-forge-orange font-medium">Groq Vision AI</span> will classify your exercise and analyze your form from the actual video frames.
                     </p>
                     <div className="mt-3 flex justify-center gap-2 flex-wrap">
-                        <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-xs">TensorFlow.js</Badge>
+                        <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-xs">Groq Vision</Badge>
                         <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs">MediaPipe Pose</Badge>
-                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">Neural Network</Badge>
+                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">Llama 4 Scout</Badge>
                     </div>
                 </motion.div>
 
@@ -309,7 +309,7 @@ export function FormAnalyzer() {
                                             ) : (
                                                 <span className="flex items-center gap-2">
                                                     <Brain className="h-5 w-5" />
-                                                    Analyze with Neural Network
+                                                    Analyze with Groq Vision
                                                 </span>
                                             )}
                                         </Button>
@@ -343,7 +343,7 @@ export function FormAnalyzer() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                            TensorFlow.js neural network (12→64→32→4) classifies exercise
+                                            Groq Vision AI (Llama 4 Scout) classifies exercise from keyframes
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="h-1.5 w-1.5 rounded-full bg-forge-orange shrink-0" />
@@ -417,7 +417,7 @@ export function FormAnalyzer() {
                                             {Object.keys(result.probabilities).length > 0 && (
                                                 <div>
                                                     <p className="text-xs font-semibold uppercase tracking-wider text-purple-400 mb-2 flex items-center gap-1">
-                                                        <Cpu className="h-3 w-3" /> Neural Network Probabilities
+                                                        <Cpu className="h-3 w-3" /> Groq Vision Confidence
                                                     </p>
                                                     <div className="space-y-2">
                                                         {Object.entries(result.probabilities)
@@ -538,11 +538,12 @@ export function FormAnalyzer() {
 
                 {/* Supported exercises */}
                 <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-8 text-center">
-                    <p className="text-sm text-slate-500 mb-3">Exercises the ML model can classify:</p>
+                    <p className="text-sm text-slate-500 mb-3">Exercises the Vision AI can classify:</p>
                     <div className="flex flex-wrap justify-center gap-2">
-                        {["Deadlift", "Squat (Barbell)", "Bench Press (Flat)", "Push-up", "Overhead Press", "Pull-Up"].map(ex => (
+                        {["Deadlift", "Squat", "Bench Press", "Push-up", "Overhead Press", "Pull-Up", "Barbell Row", "Dumbbell Lateral Raise", "Lunge"].map(ex => (
                             <Badge key={ex} className="bg-slate-800/50 text-slate-400 border-forge-border hover:text-forge-orange transition-colors">{ex}</Badge>
                         ))}
+                        <Badge className="bg-slate-800/50 text-slate-400 border-forge-border hover:text-forge-orange transition-colors">+ Any common gym exercise</Badge>
                     </div>
                 </motion.div>
             </div>
