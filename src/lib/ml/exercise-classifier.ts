@@ -7,10 +7,11 @@
  */
 
 import * as tf from '@tensorflow/tfjs';
-import { EXERCISE_CLASSES, FEATURE_NAMES, trainModel } from './train-model';
+import { EXERCISE_CLASSES, FEATURE_NAMES, trainAndSaveModel } from './train-model';
 import type { ExerciseClass } from './train-model';
 
 export type { ExerciseClass };
+export { EXERCISE_CLASSES };
 
 export interface ClassificationResult {
     exercise: ExerciseClass;
@@ -202,11 +203,14 @@ export async function initializeModel(
     try {
         onProgress?.('Generating training data...', 10);
 
-        const result = await trainModel((epoch, logs) => {
-            const progress = 10 + Math.round((epoch / 50) * 80);
-            const acc = logs?.val_acc ? (logs.val_acc as number * 100).toFixed(1) : '?';
-            onProgress?.(`Training neural network... Epoch ${epoch + 1}/50 (${acc}% acc)`, progress);
-        });
+        const result = await trainAndSaveModel(
+            (msg, p) => onProgress?.(msg, p),
+            (epoch: number, logs?: tf.Logs) => {
+                const progress = 10 + Math.round((epoch / 50) * 80);
+                const acc = logs?.val_acc ? (logs.val_acc as number * 100).toFixed(1) : '?';
+                onProgress?.(`Training neural network... Epoch ${epoch + 1}/50 (${acc}% acc)`, progress);
+            }
+        );
 
         model = result.model;
         onProgress?.('Model trained successfully!', 100);

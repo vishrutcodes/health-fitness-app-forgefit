@@ -327,44 +327,81 @@ function buildModel(): tf.Sequential {
 /**
  * Train the model and return it with training history
  */
-export async function trainModel(
-    onEpochEnd?: (epoch: number, logs: tf.Logs | undefined) => void
+export async function trainAndSaveModel(
+    onProgress?: (msg: string, p: number) => void,
+    onEpochEnd?: (epoch: number, logs?: tf.Logs) => void
 ): Promise<{ model: tf.Sequential; history: tf.History }> {
-    console.log('[MLTrainer] Generating synthetic training data...');
-    const { xs, ys } = generateTrainingData(400);
+    const EPOCHS = 50;
+    const BATCH_SIZE = 32;
 
-    // Shuffle data
-    const indices = Array.from({ length: xs.length }, (_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
+    onProgress?.("Fetching Master Dataset...", 5);
+    let xsData: number[][] = [];
+    let ysData: number[] = [];
+
+    try {
+        const response = await fetch('/real_training_data.json');
+        if (response.ok) {
+            const masterDataset = await response.json() as Record<string, number[][]>;
+            onProgress?.("Loaded Real-World Dataset", 10);
+
+            // Map JSON object to training tensors
+            Object.keys(masterDataset).forEach(exerciseClass => {
+                const classIndex = EXERCISE_CLASSES.indexOf(exerciseClass as ExerciseClass);
+                if (classIndex !== -1) {
+                    const featuresList = masterDataset[exerciseClass];
+                    featuresList.forEach(features => {
+                        xsData.push(features);
+                        ysData.push(classIndex);
+                    });
+                }
+            });
+            console.log(`[FormAnalyzer] Training exclusively on ${xsData.length} real-world images from JSON.`);
+        } else {
+            throw new Error("File not found");
+        }
+    } catch (e) {
+        console.warn("[FormAnalyzer] real_training_data.json not found or invalid. Falling back to SYNTHETIC data.");
+        onProgress?.("Generating synthetic dataset...", 10);
+        const synthetic = generateTrainingData(400);
+        xsData = synthetic.xs;
+        ysData = synthetic.ys;
     }
-    const shuffledXs = indices.map(i => xs[i]);
-    const shuffledYs = indices.map(i => ys[i]);
 
-    // Convert to tensors
-    const xsTensor = tf.tensor2d(shuffledXs);
-    const ysTensor = tf.tensor1d(shuffledYs, 'float32');
+    if (xsData.length === 0) throw new Error("Dataset is completely empty.");
 
-    // Split train/validation (85/15)
-    const splitIdx = Math.floor(shuffledXs.length * 0.85);
-    const xTrain = xsTensor.slice([0, 0], [splitIdx, 18]);
-    const yTrain = ysTensor.slice([0], [splitIdx]);
-    const xVal = xsTensor.slice([splitIdx, 0], [shuffledXs.length - splitIdx, 18]);
-    const yVal = ysTensor.slice([splitIdx], [shuffledYs.length - splitIdx]);
+    onProgress?.("Converting dataset to tensors...", 15);
+    const xs = tf.tensor2d(xsData);
+    const ys = tf.tensor1d(ysData, 'int32');
+    const ysOneHot = tf.oneHot(ys, EXERCISE_CLASSES.length);
 
-    console.log(`[MLTrainer] Training data: ${splitIdx} train, ${shuffledXs.length - splitIdx} val`);
+    // Shuffle Data ensuring labels stay aligned
+    const indicesBuffer = tf.buffer([xsData.length], 'int32');
+    for (let i = 0; i < xsData.length; i++) indicesBuffer.set(i, i);
+    const indices = indicesBuffer.toTensor();
+    const shuffledIndices = tf.util.createShuffledIndices(xsData.length);
+    const shuffledArr = new Int32Array(shuffledIndices);
+    const splitIdx = Math.floor(xsData.length * 0.8);
 
-    // Build and train
+    onProgress?.("Splitting Train/Validation...", 20);
+    const trainIndices = tf.tensor1d(shuffledArr.slice(0, splitIdx), 'int32');
+    const valIndices = tf.tensor1d(shuffledArr.slice(splitIdx), 'int32');
+
+    const xTrain = xs.gather(trainIndices);
+    const yTrainOneHot = ysOneHot.gather(trainIndices);
+    const xVal = xs.gather(valIndices);
+    const yValOneHot = ysOneHot.gather(valIndices);
+
+    onProgress?.("Compiling network...", 30);
     const model = buildModel();
 
-    const history = await model.fit(xTrain, yTrain, {
-        epochs: 50,
-        batchSize: 32,
-        validationData: [xVal, yVal],
+    onProgress?.("Training Neural Network...", 40);
+    const history = await model.fit(xTrain, yTrainOneHot, {
+        epochs: EPOCHS,
+        batchSize: BATCH_SIZE,
+        validationData: [xVal, yValOneHot],
         callbacks: {
             onEpochEnd: (epoch, logs) => {
-                if (epoch % 10 === 0 || epoch === 49) {
+                if (epoch % 10 === 0 || epoch === EPOCHS - 1) {
                     console.log(`[MLTrainer] Epoch ${epoch + 1}: loss=${logs?.loss?.toFixed(4)}, acc=${logs?.acc?.toFixed(4)}, val_acc=${logs?.val_acc?.toFixed(4)}`);
                 }
                 onEpochEnd?.(epoch, logs);
@@ -372,13 +409,17 @@ export async function trainModel(
         }
     });
 
-    // Cleanup tensors
-    xsTensor.dispose();
-    ysTensor.dispose();
+    // Cleanup tensors to prevent memory leaks in browser
+    xs.dispose();
+    ys.dispose();
+    ysOneHot.dispose();
+    indices.dispose();
+    trainIndices.dispose();
+    valIndices.dispose();
     xTrain.dispose();
-    yTrain.dispose();
+    yTrainOneHot.dispose();
     xVal.dispose();
-    yVal.dispose();
+    yValOneHot.dispose();
 
     const finalAcc = history.history['val_acc']?.slice(-1)[0] as number;
     console.log(`[MLTrainer] Training complete! Final validation accuracy: ${(finalAcc * 100).toFixed(1)}%`);
