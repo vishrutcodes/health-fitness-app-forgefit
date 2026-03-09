@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { generateDietArchitecture, swapDietFood, DietPlan, DIET_OPTIONS } from "@/lib/diet-algorithm";
+import { generateDietArchitecture, calculateFoodForMacro, DietPlan, DIET_OPTIONS } from "@/lib/diet-algorithm";
 import { LOCAL_NUTRITION_DB } from "@/lib/nutrition-db";
 
 export function DietArchitect() {
@@ -38,10 +38,21 @@ export function DietArchitect() {
             newFoodId = options[Math.floor(Math.random() * options.length)];
         }
 
-        const newFood = swapDietFood(plan.meals[mealIndex], foodIndex, newFoodId);
-
         const newPlan = { ...plan };
-        newPlan.meals[mealIndex].foods[foodIndex] = newFood;
+        const meal = newPlan.meals[mealIndex];
+
+        // Grab current food IDs for the meal
+        const newFoodIds = meal.foods.map(f => f.foodId);
+        newFoodIds[foodIndex] = newFoodId; // Swap the requested one
+
+        // Rebuild cascading meal securely
+        const proteinFood = calculateFoodForMacro('protein', newFoodIds[0], meal.targetProtein);
+        const remainingCarbTarget = Math.max(0, meal.targetCarbs - proteinFood.carbs);
+        const carbFood = calculateFoodForMacro('carbs', newFoodIds[1], remainingCarbTarget);
+        const remainingFatTarget = Math.max(0, meal.targetFat - proteinFood.fat - carbFood.fat);
+        const fatFood = calculateFoodForMacro('fat', newFoodIds[2], remainingFatTarget);
+
+        meal.foods = [proteinFood, carbFood, fatFood];
         setPlan(newPlan);
     };
 
@@ -142,44 +153,54 @@ export function DietArchitect() {
 
                                     {/* Meals Array */}
                                     <div className="space-y-4">
-                                        {plan.meals.map((meal, mIdx) => (
-                                            <div key={meal.id} className="glass-card rounded-2xl border border-forge-border overflow-hidden">
-                                                <div className="bg-slate-900/50 px-5 py-3 border-b border-forge-border flex justify-between items-center">
-                                                    <h3 className="font-bold text-white text-lg">Meal {meal.id}</h3>
-                                                    <span className="text-xs font-mono text-slate-400 bg-black/50 px-2 py-1 rounded-md">
-                                                        {meal.targetCalories} kcal | {meal.targetProtein}g Protein, {meal.targetCarbs}g Carbs, {meal.targetFat}g Fat
-                                                    </span>
-                                                </div>
-                                                <div className="p-2 space-y-2">
-                                                    {meal.foods.map((food, fIdx) => (
-                                                        <div key={fIdx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors gap-3">
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-white font-medium">{food.name}</span>
-                                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-forge-orange/20 text-forge-orange font-mono">
-                                                                        {food.weightGrams}g
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex flex-wrap items-center gap-3 mt-1 text-xs font-mono">
-                                                                    <span className="text-blue-400">{food.protein}g Protein</span>
-                                                                    <span className="text-emerald-400">{food.carbs}g Carbs</span>
-                                                                    <span className="text-amber-400">{food.fat}g Fat</span>
-                                                                    <span className="text-slate-500">• {food.calories} kcal</span>
-                                                                </div>
-                                                            </div>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => handleSwap(mIdx, fIdx, food.primaryMacro)}
-                                                                className="shrink-0 text-slate-400 hover:text-white hover:bg-white/10 text-xs"
-                                                            >
-                                                                <RefreshCw className="mr-1 h-3 w-3" /> Swap Match
-                                                            </Button>
+                                        {plan.meals.map((meal, mIdx) => {
+                                            const actualCals = Math.round(meal.foods.reduce((acc, f) => acc + f.calories, 0));
+                                            const actualPro = meal.foods.reduce((acc, f) => acc + f.protein, 0).toFixed(1);
+                                            const actualCarbs = meal.foods.reduce((acc, f) => acc + f.carbs, 0).toFixed(1);
+                                            const actualFat = meal.foods.reduce((acc, f) => acc + f.fat, 0).toFixed(1);
+
+                                            return (
+                                                <div key={meal.id} className="glass-card rounded-2xl border border-forge-border overflow-hidden">
+                                                    <div className="bg-slate-900/50 px-5 py-3 border-b border-forge-border flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                                        <h3 className="font-bold text-white text-lg">Meal {meal.id}</h3>
+                                                        <div className="flex gap-2 items-center">
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Target: {meal.targetCalories}kcal</span>
+                                                            <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md border border-emerald-400/20">
+                                                                True Total: {actualCals} kcal | {actualPro}g P, {actualCarbs}g C, {actualFat}g F
+                                                            </span>
                                                         </div>
-                                                    ))}
+                                                    </div>
+                                                    <div className="p-2 space-y-2">
+                                                        {meal.foods.map((food, fIdx) => (
+                                                            <div key={fIdx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors gap-3">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-white font-medium">{food.name}</span>
+                                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-forge-orange/20 text-forge-orange font-mono">
+                                                                            {food.weightGrams}g
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex flex-wrap items-center gap-3 mt-1 text-xs font-mono">
+                                                                        <span className="text-blue-400">{food.protein}g Protein</span>
+                                                                        <span className="text-emerald-400">{food.carbs}g Carbs</span>
+                                                                        <span className="text-amber-400">{food.fat}g Fat</span>
+                                                                        <span className="text-slate-500">• {food.calories} kcal</span>
+                                                                    </div>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleSwap(mIdx, fIdx, food.primaryMacro)}
+                                                                    className="shrink-0 text-slate-400 hover:text-white hover:bg-white/10 text-xs"
+                                                                >
+                                                                    <RefreshCw className="mr-1 h-3 w-3" /> Swap Match
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </motion.div>
                             )}

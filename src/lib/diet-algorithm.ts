@@ -51,18 +51,24 @@ export function generateDietArchitecture(targetCalories: number, targetProtein: 
     const meals: Meal[] = [];
 
     for (let i = 1; i <= numMeals; i++) {
+        // Step 1: Hit Protein Target Exactly
+        const proteinFood = calculateFoodForMacro('protein', 'chicken_breast_cooked', mealTargetP);
+
+        // Step 2: Hit Carb Target Exactly (subtracting trace carbs from protein source)
+        const remainingCarbTarget = Math.max(0, mealTargetC - proteinFood.carbs);
+        const carbFood = calculateFoodForMacro('carbs', 'white_rice_cooked', remainingCarbTarget);
+
+        // Step 3: Hit Fat Target Exactly (subtracting trace fats from both protein and carb sources)
+        const remainingFatTarget = Math.max(0, mealTargetF - proteinFood.fat - carbFood.fat);
+        const fatFood = calculateFoodForMacro('fat', 'olive_oil', remainingFatTarget);
+
         meals.push({
             id: i,
             targetCalories: Math.round(mealTargetCal),
             targetProtein: parseFloat(mealTargetP.toFixed(1)),
             targetCarbs: parseFloat(mealTargetC.toFixed(1)),
             targetFat: parseFloat(mealTargetF.toFixed(1)),
-            // Base generation uses generic items to fulfill math
-            foods: [
-                calculateFoodForMacro('protein', 'chicken_breast_cooked', mealTargetP),
-                calculateFoodForMacro('carbs', 'white_rice_cooked', mealTargetC),
-                calculateFoodForMacro('fat', 'olive_oil', mealTargetF)
-            ]
+            foods: [proteinFood, carbFood, fatFood]
         });
     }
 
@@ -113,16 +119,7 @@ export function calculateFoodForMacro(macro: 'protein' | 'carbs' | 'fat', foodId
     };
 }
 
-// 3. Swap logic
-export function swapDietFood(meal: Meal, foodIndex: number, newFoodId: string): MealPlanFood {
-    const oldFood = meal.foods[foodIndex];
-    // Re-calculates precisely using the NEW food's density to hit the OLD food's target macro goal.
-    const macroTarget = oldFood.primaryMacro === 'protein' ? meal.targetProtein
-        : oldFood.primaryMacro === 'carbs' ? meal.targetCarbs
-            : meal.targetFat;
 
-    return calculateFoodForMacro(oldFood.primaryMacro, newFoodId, macroTarget);
-}
 
 export const DIET_OPTIONS = {
     protein: ['chicken_breast_cooked', 'egg_whole_large', 'egg_white_large', 'whey_protein_isolate', 'beef_mince_5_percent', 'salmon_raw', 'greek_yogurt_0', 'soya_chunks'],
