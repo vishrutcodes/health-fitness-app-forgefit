@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { BookOpen, Sparkles, TrendingUp, Dumbbell, Pill, Award, ChevronDown, Heart, Shield, Activity, Scale, Zap, Flame, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -244,97 +244,92 @@ export function KnowledgeBase() {
                                             </div>
                                         </div>
 
-                                        <AnimatePresence>
-                                            {expandedIndex === i && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, height: 0, filter: "blur(10px)" }}
-                                                    animate={{ opacity: 1, height: "auto", filter: "blur(0px)" }}
-                                                    exit={{ opacity: 0, height: 0, filter: "blur(10px)" }}
-                                                    transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <div className="mt-8 pt-8 border-t border-forge-border/80 space-y-6">
-                                                        {guide.content.map((section, j) => {
-                                                            if (section.type === "paragraph") {
-                                                                return (
-                                                                    <motion.p
-                                                                        key={j}
-                                                                        initial={{ opacity: 0, y: 10 }}
-                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                        transition={{ delay: j * 0.05 + 0.1 }}
-                                                                        className="text-base md:text-lg text-slate-300 leading-relaxed font-normal"
-                                                                    >
-                                                                        {section.text}
-                                                                    </motion.p>
-                                                                );
-                                                            }
+                                        <div
+                                            className={`grid transition-all duration-300 ease-in-out ${expandedIndex === i ? "grid-rows-[1fr] opacity-100 mt-8" : "grid-rows-[0fr] opacity-0 overflow-hidden"
+                                                }`}
+                                        >
+                                            <div className="overflow-hidden">
+                                                <div className="pt-8 border-t border-forge-border/80 space-y-6">
+                                                    {guide.content.map((section, j) => {
+                                                        if (section.type === "paragraph") {
+                                                            return (
+                                                                <motion.p
+                                                                    key={j}
+                                                                    initial={{ opacity: 0, y: 10 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    transition={{ delay: j * 0.05 + 0.1 }}
+                                                                    className="text-base md:text-lg text-slate-300 leading-relaxed font-normal"
+                                                                >
+                                                                    {section.text}
+                                                                </motion.p>
+                                                            );
+                                                        }
 
-                                                            if (section.type === "header") {
-                                                                return (
-                                                                    <motion.h4
-                                                                        key={j}
-                                                                        initial={{ opacity: 0, y: 10 }}
-                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                        transition={{ delay: j * 0.05 + 0.1 }}
-                                                                        className="text-xl md:text-2xl font-bold text-white pt-2 border-b border-forge-border/40 pb-2"
-                                                                    >
-                                                                        {section.text}
-                                                                    </motion.h4>
-                                                                );
-                                                            }
+                                                        if (section.type === "header") {
+                                                            return (
+                                                                <motion.h4
+                                                                    key={j}
+                                                                    initial={{ opacity: 0, y: 10 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    transition={{ delay: j * 0.05 + 0.1 }}
+                                                                    className="text-xl md:text-2xl font-bold text-white pt-2 border-b border-forge-border/40 pb-2"
+                                                                >
+                                                                    {section.text}
+                                                                </motion.h4>
+                                                            );
+                                                        }
 
-                                                            if (section.type === "bullet") {
-                                                                const [boldPart, restPart] = section.text.split(":");
-                                                                return (
-                                                                    <motion.div
-                                                                        key={j}
-                                                                        initial={{ opacity: 0, x: -10 }}
-                                                                        animate={{ opacity: 1, x: 0 }}
-                                                                        transition={{ delay: j * 0.05 + 0.1 }}
-                                                                        className="flex gap-4 group/item items-start pl-2"
-                                                                    >
-                                                                        <span className="text-2xl shrink-0 mt-0.5">{section.emoji}</span>
-                                                                        <p className="text-base md:text-lg text-slate-300 leading-relaxed">
-                                                                            {restPart ? (
-                                                                                <>
-                                                                                    <strong className="text-white font-semibold">{boldPart}:</strong>
-                                                                                    <span className="text-slate-400">{restPart}</span>
-                                                                                </>
-                                                                            ) : (
-                                                                                <span className="text-slate-400">{section.text}</span>
-                                                                            )}
+                                                        if (section.type === "bullet") {
+                                                            const [boldPart, restPart] = section.text.split(":");
+                                                            return (
+                                                                <motion.div
+                                                                    key={j}
+                                                                    initial={{ opacity: 0, x: -10 }}
+                                                                    animate={{ opacity: 1, x: 0 }}
+                                                                    transition={{ delay: j * 0.05 + 0.1 }}
+                                                                    className="flex gap-4 group/item items-start pl-2"
+                                                                >
+                                                                    <span className="text-2xl shrink-0 mt-0.5">{section.emoji}</span>
+                                                                    <p className="text-base md:text-lg text-slate-300 leading-relaxed">
+                                                                        {restPart ? (
+                                                                            <>
+                                                                                <strong className="text-white font-semibold">{boldPart}:</strong>
+                                                                                <span className="text-slate-400">{restPart}</span>
+                                                                            </>
+                                                                        ) : (
+                                                                            <span className="text-slate-400">{section.text}</span>
+                                                                        )}
+                                                                    </p>
+                                                                </motion.div>
+                                                            );
+                                                        }
+
+                                                        if (section.type === "quote") {
+                                                            return (
+                                                                <motion.div
+                                                                    key={j}
+                                                                    initial={{ opacity: 0, scale: 0.98 }}
+                                                                    animate={{ opacity: 1, scale: 1 }}
+                                                                    transition={{ delay: j * 0.05 + 0.1 }}
+                                                                    className="mt-8 relative"
+                                                                >
+                                                                    <div className="absolute inset-0 bg-linear-to-r from-forge-orange/10 to-transparent rounded-xl" />
+                                                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-forge-orange rounded-l-xl" />
+                                                                    <div className="relative p-6 flex gap-4 items-start">
+                                                                        <Info className="h-6 w-6 text-forge-orange shrink-0 mt-1" />
+                                                                        <p className="italic font-medium text-lg text-slate-200">
+                                                                            &quot;{section.text}&quot;
                                                                         </p>
-                                                                    </motion.div>
-                                                                );
-                                                            }
+                                                                    </div>
+                                                                </motion.div>
+                                                            );
+                                                        }
 
-                                                            if (section.type === "quote") {
-                                                                return (
-                                                                    <motion.div
-                                                                        key={j}
-                                                                        initial={{ opacity: 0, scale: 0.98 }}
-                                                                        animate={{ opacity: 1, scale: 1 }}
-                                                                        transition={{ delay: j * 0.05 + 0.1 }}
-                                                                        className="mt-8 relative"
-                                                                    >
-                                                                        <div className="absolute inset-0 bg-linear-to-r from-forge-orange/10 to-transparent rounded-xl" />
-                                                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-forge-orange rounded-l-xl" />
-                                                                        <div className="relative p-6 flex gap-4 items-start">
-                                                                            <Info className="h-6 w-6 text-forge-orange shrink-0 mt-1" />
-                                                                            <p className="italic font-medium text-lg text-slate-200">
-                                                                                &quot;{section.text}&quot;
-                                                                            </p>
-                                                                        </div>
-                                                                    </motion.div>
-                                                                );
-                                                            }
-
-                                                            return null;
-                                                        })}
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                                                        return null;
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </motion.div>
