@@ -64,18 +64,22 @@ export function extractFeatures(landmarks: PoseLandmark[]): number[] {
     const avgHip = (lHip + rHip) / 2;
     const avgShoulder = (lShoulder + rShoulder) / 2;
 
-    // Torso angle from vertical
+    // Torso angle from vertical (0 = vertical, 90 = horizontal)
     const shoulderMid = { x: (landmarks[11].x + landmarks[12].x) / 2, y: (landmarks[11].y + landmarks[12].y) / 2 };
     const hipMid = { x: (landmarks[23].x + landmarks[24].x) / 2, y: (landmarks[23].y + landmarks[24].y) / 2 };
-    const dx = shoulderMid.x - hipMid.x;
-    const dy = shoulderMid.y - hipMid.y;
-    const torsoAngle = Math.abs(Math.atan2(dx, -dy) * 180 / Math.PI);
+    const dxTorso = hipMid.x - shoulderMid.x;
+    const dyTorso = hipMid.y - shoulderMid.y;
+    const torsoAngleRaw = Math.abs(Math.atan2(dyTorso, dxTorso) * 180 / Math.PI);
+    const torsoAngle = Math.abs(90 - torsoAngleRaw);
 
     // Hip-knee ratio
     const hipKneeRatio = avgKnee > 0 ? avgHip / avgKnee : 1;
 
     // Stance width (normalized ankle distance)
-    const stanceWidth = Math.abs(landmarks[27].x - landmarks[28].x);
+    const stanceWidth = Math.sqrt(
+        Math.pow(landmarks[27].x - landmarks[28].x, 2) +
+        Math.pow(landmarks[27].y - landmarks[28].y, 2)
+    );
 
     // Hand height relative to shoulders
     const handY = (landmarks[15].y + landmarks[16].y) / 2;
@@ -83,10 +87,11 @@ export function extractFeatures(landmarks: PoseLandmark[]): number[] {
     const handHeightRel = shoulderY - handY; // positive = hands above shoulders
 
     // Is horizontal (body lying flat)
-    const ankleY = (landmarks[27].y + landmarks[28].y) / 2;
-    const shoulderHipDiff = Math.abs(shoulderMid.y - hipMid.y);
-    const bodyLength = Math.abs(shoulderMid.y - ankleY);
-    const isHorizontal = bodyLength > 0.01 ? 1 - (shoulderHipDiff / bodyLength) : 0;
+    const ankleMid = { x: (landmarks[27].x + landmarks[28].x) / 2, y: (landmarks[27].y + landmarks[28].y) / 2 };
+    const dxBody = ankleMid.x - shoulderMid.x;
+    const dyBody = ankleMid.y - shoulderMid.y;
+    const bodyAngleRaw = Math.abs(Math.atan2(dyBody, dxBody) * 180 / Math.PI);
+    const isHorizontal = Math.abs(90 - bodyAngleRaw) / 90; // 0 = vertical, 1 = horizontal
 
     // Arm straightness (0=bent, 1=straight)
     const armStraightness = Math.min(1, Math.max(0, (avgElbow - 90) / 90));

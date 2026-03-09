@@ -67,11 +67,11 @@ const DEADLIFT_PROFILE: ExerciseProfile = {
     elbowAngle: { min: 140, max: 180, mean: 165, std: 10 },   // STRAIGHT arms
     hipAngle: { min: 60, max: 155, mean: 110, std: 25 },   // hinged
     shoulderAngle: { min: 10, max: 50, mean: 25, std: 12 },   // arms hanging
-    torsoAngle: { min: 15, max: 75, mean: 42, std: 18 },   // forward lean
+    torsoAngle: { min: 10, max: 75, mean: 42, std: 15 },   // forward lean
     hipKneeRatio: { min: 0.45, max: 0.95, mean: 0.75, std: 0.12 }, // hip-dominant
     stanceWidth: { min: 0.08, max: 0.28, mean: 0.16, std: 0.05 },
     handHeight: { min: -0.35, max: 0.0, mean: -0.15, std: 0.08 }, // below shoulders
-    isHorizontal: { min: 0, max: 0.15, mean: 0.05, std: 0.05 },  // NOT horizontal
+    isHorizontal: { min: 0, max: 0.3, mean: 0.1, std: 0.05 },  // NOT horizontal
     armStraightness: { min: 0.7, max: 1.0, mean: 0.9, std: 0.08 },  // arms straight
     wristBelowHip: { min: 0.5, max: 1.0, mean: 0.8, std: 0.15 },  // wrists low
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
@@ -83,13 +83,13 @@ const SQUAT_PROFILE: ExerciseProfile = {
     elbowAngle: { min: 40, max: 150, mean: 85, std: 30 },   // arms holding bar
     hipAngle: { min: 55, max: 155, mean: 100, std: 25 },   // co-flexing with knee
     shoulderAngle: { min: 30, max: 90, mean: 55, std: 18 },   // arms up on bar
-    torsoAngle: { min: 3, max: 38, mean: 18, std: 10 },   // UPRIGHT
+    torsoAngle: { min: 0, max: 50, mean: 20, std: 12 },   // UPRIGHT
     hipKneeRatio: { min: 0.85, max: 1.15, mean: 1.0, std: 0.08 }, // balanced
     stanceWidth: { min: 0.10, max: 0.32, mean: 0.20, std: 0.06 },
     handHeight: { min: -0.10, max: 0.15, mean: 0.02, std: 0.06 },
-    isHorizontal: { min: 0, max: 0.1, mean: 0.03, std: 0.03 }, // NOT horizontal
+    isHorizontal: { min: 0, max: 0.2, mean: 0.05, std: 0.05 }, // NOT horizontal
     armStraightness: { min: 0.1, max: 0.65, mean: 0.35, std: 0.15 }, // arms bent on bar
-    wristBelowHip: { min: 0.0, max: 0.3, mean: 0.1, std: 0.1 },  // wrists up
+    wristBelowHip: { min: 0.0, max: 0.3, mean: 0.0, std: 0.1 },  // wrists up
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
 };
 
@@ -99,13 +99,13 @@ const BENCH_PROFILE: ExerciseProfile = {
     elbowAngle: { min: 40, max: 175, mean: 110, std: 35 },   // pressing range
     hipAngle: { min: 80, max: 175, mean: 140, std: 25 },   // lying flat
     shoulderAngle: { min: 30, max: 100, mean: 65, std: 20 },   // pressing
-    torsoAngle: { min: 0, max: 18, mean: 8, std: 5 },    // flat on bench
+    torsoAngle: { min: 70, max: 100, mean: 85, std: 10 },    // flat on bench
     hipKneeRatio: { min: 0.8, max: 2.5, mean: 1.5, std: 0.35 },
     stanceWidth: { min: 0.08, max: 0.25, mean: 0.15, std: 0.05 },
     handHeight: { min: -0.15, max: 0.25, mean: 0.05, std: 0.10 },
-    isHorizontal: { min: 0.5, max: 1.0, mean: 0.82, std: 0.12 }, // HORIZONTAL
+    isHorizontal: { min: 0.7, max: 1.0, mean: 0.9, std: 0.08 }, // HORIZONTAL
     armStraightness: { min: 0.1, max: 0.85, mean: 0.45, std: 0.22 },
-    wristBelowHip: { min: 0.0, max: 0.2, mean: 0.05, std: 0.06 },
+    wristBelowHip: { min: 0.0, max: 0.3, mean: 0.0, std: 0.1 },
     symmetry: { min: 0.65, max: 1.0, mean: 0.85, std: 0.10 },
 };
 
@@ -115,13 +115,13 @@ const PUSHUP_PROFILE: ExerciseProfile = {
     elbowAngle: { min: 50, max: 180, mean: 115, std: 40 },   // pressing range
     hipAngle: { min: 140, max: 180, mean: 165, std: 10 },   // straight bodyline
     shoulderAngle: { min: 40, max: 100, mean: 70, std: 20 },   // pressing
-    torsoAngle: { min: 55, max: 85, mean: 70, std: 10 },    // angled from floor
+    torsoAngle: { min: 65, max: 100, mean: 82, std: 12 },    // angled from floor
     hipKneeRatio: { min: 0.9, max: 1.1, mean: 0.97, std: 0.05 },
     stanceWidth: { min: 0.05, max: 0.25, mean: 0.15, std: 0.05 },
     handHeight: { min: -0.4, max: 0.0, mean: -0.2, std: 0.1 },  // hands below shoulders
-    isHorizontal: { min: 0.5, max: 1.0, mean: 0.85, std: 0.1 }, // HORIZONTALish
+    isHorizontal: { min: 0.6, max: 1.0, mean: 0.85, std: 0.1 }, // HORIZONTALish
     armStraightness: { min: 0.1, max: 1.0, mean: 0.55, std: 0.25 },
-    wristBelowHip: { min: 0.6, max: 1.0, mean: 0.85, std: 0.1 },
+    wristBelowHip: { min: 0.0, max: 1.0, mean: 0.5, std: 0.3 },
     symmetry: { min: 0.7, max: 1.0, mean: 0.88, std: 0.08 },
 };
 
