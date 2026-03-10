@@ -1156,91 +1156,197 @@ export function resolveMeal(
 }
 
 /**
- * Scale a set of resolved meals so total calories hit the target.
- * Preserves the LLM's food choices — only adjusts portion sizes proportionally.
- * Also does a secondary protein-focused adjustment if protein target is provided.
+ * Classify whether a food is a "protein source" (protein contributes >40% of its calories)
+ * vs an "energy source" (carbs/fat dominant).
+ */
+function isProteinDominant(foodId: string): boolean {
+    const food = LOCAL_NUTRITION_DB[foodId];
+    if (!food) return false;
+    const pCal = food.proteinPer100g * 4;
+    const totalCal = pCal + food.carbsPer100g * 4 + food.fatPer100g * 9;
+    if (totalCal === 0) return false;
+    return (pCal / totalCal) > 0.40;
+}
+
+/**
+ * 2-Factor Scaling: independently scale protein-source and energy-source ingredients
+ * to hit BOTH calorie and protein targets simultaneously.
+ *
+ * Algorithm:
+ * 1. Classify each ingredient as protein-dominant or energy-dominant
+ * 2. proteinScale = targetProtein / currentProteinFromProteinSources
+ *    → scales protein-source portions to hit protein target
+ * 3. After scaling protein sources, compute their new calorie contribution
+ * 4. energyScale = (targetCalories - proteinSourceCalories) / currentEnergySourceCalories
+ *    → scales energy-source portions to fill the remaining calorie budget
+ *
+ * This gives independent control over both targets with real USDA math.
+ */
+function dualScale(
+    allIngredients: ResolvedIngredient[],
+    targetCalories: number,
+    targetProtein: number
+): ResolvedIngredient[] {
+    // Split ingredients into protein-dominant and energy-dominant
+    const proteinIngs: ResolvedIngredient[] = [];
+    const energyIngs: ResolvedIngredient[] = [];
+
+    for (const ing of allIngredients) {
+        if (isProteinDominant(ing.foodId)) {
+            proteinIngs.push(ing);
+        } else {
+            energyIngs.push(ing);
+        }
+    }
+
+    // Current protein from protein sources
+    const currentProteinFromPSources = proteinIngs.reduce((s, i) => s + i.protein, 0);
+    // Current calories from energy sources
+    const currentEnergyCals = energyIngs.reduce((s, i) => s + i.calories, 0);
+
+    // Step 1: Scale protein sources to hit protein target
+    let proteinScale = 1;
+    if (currentProteinFromPSources > 0 && targetProtein > 0) {
+        proteinScale = targetProtein / currentProteinFromPSources;
+        // Clamp to avoid extreme scaling (0.5x to 2.5x)
+        proteinScale = Math.max(0.5, Math.min(2.5, proteinScale));
+    }
+
+    // Re-resolve protein sources with new scale
+    const scaledProteinIngs: ResolvedIngredient[] = [];
+    let proteinSourceCals = 0;
+
+    for (const ing of proteinIngs) {
+        const newWeight = ing.weightGrams * proteinScale;
+        const resolved = resolveIngredient(ing.foodId, newWeight);
+        if (resolved) {
+            scaledProteinIngs.push(resolved);
+            proteinSourceCals += resolved.calories;
+        }
+    }
+
+    // Step 2: Scale energy sources to fill remaining calorie budget
+    const remainingCalBudget = targetCalories - proteinSourceCals;
+    let energyScale = 1;
+    if (currentEnergyCals > 0 && remainingCalBudget > 0) {
+        energyScale = remainingCalBudget / currentEnergyCals;
+        // Clamp to avoid extreme scaling (0.3x to 3x)
+        energyScale = Math.max(0.3, Math.min(3.0, energyScale));
+    }
+
+    const scaledEnergyIngs: ResolvedIngredient[] = [];
+    for (const ing of energyIngs) {
+        const newWeight = ing.weightGrams * energyScale;
+        const resolved = resolveIngredient(ing.foodId, newWeight);
+        if (resolved) {
+            scaledEnergyIngs.push(resolved);
+        }
+    }
+
+    // Reorder to match original ingredient order
+    const result: ResolvedIngredient[] = [];
+    let pIdx = 0, eIdx = 0;
+    for (const ing of allIngredients) {
+        if (isProteinDominant(ing.foodId)) {
+            if (pIdx < scaledProteinIngs.length) result.push(scaledProteinIngs[pIdx++]);
+        } else {
+            if (eIdx < scaledEnergyIngs.length) result.push(scaledEnergyIngs[eIdx++]);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Scale a set of resolved meals so total calories AND protein hit targets.
+ * Uses 2-factor scaling: protein sources scale to hit protein, energy sources fill remaining cals.
  */
 export function scaleMealsToTarget(
     resolvedMeals: ResolvedMeal[],
     targetCalories: number,
     targetProtein?: number
 ): ResolvedMeal[] {
-    // Calculate current totals
-    let currentCalories = resolvedMeals.reduce((s, m) => s + m.totalCalories, 0);
+    // Gather all ingredients across all meals for global scaling
+    const allIngredients: { mealIdx: number; ingredient: ResolvedIngredient }[] = [];
+    for (let i = 0; i < resolvedMeals.length; i++) {
+        for (const ing of resolvedMeals[i].ingredients) {
+            allIngredients.push({ mealIdx: i, ingredient: ing });
+        }
+    }
+
+    const currentCalories = resolvedMeals.reduce((s, m) => s + m.totalCalories, 0);
+    const currentProtein = resolvedMeals.reduce((s, m) => s + m.totalProtein, 0);
 
     if (currentCalories === 0) return resolvedMeals;
 
-    // Only scale if off by more than 2%
-    const calorieDrift = Math.abs(currentCalories - targetCalories) / targetCalories;
-    if (calorieDrift <= 0.02) return resolvedMeals;
+    const calDrift = Math.abs(currentCalories - targetCalories) / targetCalories;
+    const proDrift = targetProtein ? Math.abs(currentProtein - targetProtein) / targetProtein : 0;
 
-    const scaleFactor = targetCalories / currentCalories;
+    // If both are already within 3%, no scaling needed
+    if (calDrift <= 0.03 && proDrift <= 0.03) return resolvedMeals;
 
-    // Scale all ingredient weights proportionally and re-resolve
-    const scaled = resolvedMeals.map(meal => {
-        const scaledIngredients: ResolvedIngredient[] = [];
+    // Apply dual scaling to all ingredients globally
+    const flatIngs = allIngredients.map(a => a.ingredient);
+    const effectiveProtein = targetProtein || currentProtein; // preserve protein if no target
+    const scaledFlat = dualScale(flatIngs, targetCalories, effectiveProtein);
+
+    // Re-assemble into meals
+    let idx = 0;
+    return resolvedMeals.map((meal, mealIdx) => {
+        const mealIngCount = meal.ingredients.length;
+        const mealIngs = scaledFlat.slice(idx, idx + mealIngCount);
+        idx += mealIngCount;
+
         let totalProtein = 0, totalCarbs = 0, totalFat = 0, totalCalories = 0;
-
-        for (const ing of meal.ingredients) {
-            const newWeight = ing.weightGrams * scaleFactor;
-            const resolved = resolveIngredient(ing.foodId, newWeight);
-            if (resolved) {
-                scaledIngredients.push(resolved);
-                totalProtein += resolved.protein;
-                totalCarbs += resolved.carbs;
-                totalFat += resolved.fat;
-                totalCalories += resolved.calories;
-            }
+        for (const ing of mealIngs) {
+            totalProtein += ing.protein;
+            totalCarbs += ing.carbs;
+            totalFat += ing.fat;
+            totalCalories += ing.calories;
         }
 
         return {
             dish: meal.dish,
             recipe: meal.recipe,
-            ingredients: scaledIngredients,
+            ingredients: mealIngs,
             totalProtein: parseFloat(totalProtein.toFixed(1)),
             totalCarbs: parseFloat(totalCarbs.toFixed(1)),
             totalFat: parseFloat(totalFat.toFixed(1)),
             totalCalories: Math.round(totalCalories)
         } as ResolvedMeal;
     });
-
-    return scaled;
 }
 
 /**
  * Scale a single meal so its calories hit the target.
- * Used by the swap endpoint to match the replaced meal's calories.
+ * Uses the same 2-factor approach for consistency.
  */
 export function scaleSingleMealToTarget(
     meal: ResolvedMeal,
-    targetCalories: number
+    targetCalories: number,
+    targetProtein?: number
 ): ResolvedMeal {
     if (meal.totalCalories === 0 || targetCalories === 0) return meal;
 
-    const calorieDrift = Math.abs(meal.totalCalories - targetCalories) / targetCalories;
-    if (calorieDrift <= 0.02) return meal;
+    const calDrift = Math.abs(meal.totalCalories - targetCalories) / targetCalories;
+    if (calDrift <= 0.03 && !targetProtein) return meal;
 
-    const scaleFactor = targetCalories / meal.totalCalories;
+    // Use 2-factor if protein target provided, otherwise simple proportional
+    const effectiveProtein = targetProtein || (meal.totalProtein * (targetCalories / meal.totalCalories));
+    const scaledIngs = dualScale(meal.ingredients, targetCalories, effectiveProtein);
 
-    const scaledIngredients: ResolvedIngredient[] = [];
     let totalProtein = 0, totalCarbs = 0, totalFat = 0, totalCalories = 0;
-
-    for (const ing of meal.ingredients) {
-        const newWeight = ing.weightGrams * scaleFactor;
-        const resolved = resolveIngredient(ing.foodId, newWeight);
-        if (resolved) {
-            scaledIngredients.push(resolved);
-            totalProtein += resolved.protein;
-            totalCarbs += resolved.carbs;
-            totalFat += resolved.fat;
-            totalCalories += resolved.calories;
-        }
+    for (const ing of scaledIngs) {
+        totalProtein += ing.protein;
+        totalCarbs += ing.carbs;
+        totalFat += ing.fat;
+        totalCalories += ing.calories;
     }
 
     return {
         dish: meal.dish,
         recipe: meal.recipe,
-        ingredients: scaledIngredients,
+        ingredients: scaledIngs,
         totalProtein: parseFloat(totalProtein.toFixed(1)),
         totalCarbs: parseFloat(totalCarbs.toFixed(1)),
         totalFat: parseFloat(totalFat.toFixed(1)),

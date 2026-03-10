@@ -74,7 +74,7 @@ Generate a COMPLETELY DIFFERENT dish that gets close to these targets.`
         const targetMealCalories = Math.round(
             (targetProtein * 4) + (targetCarbs * 4) + (targetFat * 9)
         );
-        const scaledResolved = scaleSingleMealToTarget(resolved, targetMealCalories);
+        const scaledResolved = scaleSingleMealToTarget(resolved, targetMealCalories, targetProtein);
 
         const meal = {
             meal_name: mealName || "Alternative Meal",
