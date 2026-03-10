@@ -808,6 +808,80 @@ forgefit/
 
 ---
 
+
+---
+
+## 🤝 Contributing Guidelines
+
+ForgeFit is built with a commitment to high-quality, typed, and production-ready code. We welcome contributions from the community. Whether it's adding a new fitness calculator, tweaking UI micro-animations, or improving the ML pipeline—we'd love your help.
+
+### Pull Request Process
+
+1. **Fork the Repository**
+2. **Create a Feature Branch**
+   ```bash
+   git checkout -b feature/AmazingFeature
+   ```
+3. **Commit your Changes**
+   Follow conventional commits format:
+   ```bash
+   git commit -m "feat: Add new hyper-extension form analysis rule"
+   ```
+4. **Push to the Branch**
+   ```bash
+   git push origin feature/AmazingFeature
+   ```
+5. **Open a Pull Request**
+   Provide a detailed description of the changes. If it is a UI change, please include screenshots or a GIF in the PR body.
+
+### Development Standards
+
+- **TypeScript Strict Mode:** All code must be strictly typed. Avoid `any` at all costs. Define distinct interfaces for component props and API responses.
+- **Tailwind Conventions:** Use the custom `@theme` configuration for colors instead of raw hex values (e.g., `text-forge-orange` instead of `text-[#ff6b2b]`).
+- **Component Design:** If building a new feature section, ensure it follows the established "glassmorphic" card aesthetic. Use `framer-motion` for entry animations (`initial={{ opacity: 0, y: 20 }}`).
+- **ESLint:** Ensure the codebase passes standard ESLint checks (`npm run lint`).
+
+---
+
+## ☁️ Advanced Deployment & Architecture Notes
+
+### Vercel Edge Network
+ForgeFit is heavily optimized for zero-configuration deployment on Vercel. Because the core inference calls out to external APIs (Groq and Supabase), utilizing the Edge Network minimizes latency significantly.
+
+- **API Route Optimization:** The Next.js API routes inside `src/app/api` are currently executing on the Node.js runtime. For maximum performance in the future, these can be migrated to Edge runtimes by exporting `export const runtime = 'edge'` at the top of the route files, provided dependencies (like the Groq SDK) are Edge-compatible.
+- **Static Generation Strategy:** The Landing Page (`/`) utilizes React Server Components heavily. Pages like `/progress` and `prs` which require authenticated Supabase sessions fall back elegantly to Client-Side Rendering (CSR) via the `"use client"` directive, protecting user data natively.
+
+### Database Design & Security (Supabase)
+
+To guarantee security in a serverless environment, ForgeFit offloads data protection completely to the PostgreSQL database layer using **Row Level Security (RLS)**.
+
+#### Architecture Example (Personal Records)
+```sql
+CREATE TABLE public.personal_records (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) NOT NULL,
+    exercise TEXT NOT NULL,
+    weight_kg NUMERIC NOT NULL,
+    reps INTEGER NOT NULL,
+    date DATE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- RLS Core Logic
+ALTER TABLE public.personal_records ENABLE ROW LEVEL SECURITY;
+
+-- Users can ONLY select their own rows
+CREATE POLICY "Users can view their own PRs"
+    ON public.personal_records FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Users can ONLY insert heavily validated rows belonging to their UID
+CREATE POLICY "Users can insert their own PRs"
+    ON public.personal_records FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+```
+*By strictly coupling `auth.uid()` to `user_id`, ForgeFit ensures vertical data separation down to the bare-metal database level.*
+
 ## 📄 License
 
 This project is open source and available under the [MIT License](LICENSE).
