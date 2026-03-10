@@ -5,8 +5,8 @@ import { Flame } from "lucide-react";
 const platformLinks = [
     { label: "Calculator", href: "#calculator" },
     { label: "Fitness Toolkit", href: "#toolkit" },
-    { label: "Community", href: "#community" },
-    { label: "Pro Features", href: "#pro" },
+    { label: "Diet Architect", href: "#diet" },
+    { label: "Macro Breakdown", href: "#macros" },
     { label: "Exercise Guide", href: "#exercise-guide" },
 ];
 
@@ -14,7 +14,7 @@ const quickLinks = [
     { label: "Workout Timer", href: "#timer" },
     { label: "Phase Planner", href: "#planner" },
     { label: "Career Roadmap", href: "#roadmap" },
-    { label: "Knowledge Base", href: "#knowledge" },
+    { label: "AI Form Analyzer", href: "#form-analyzer" },
     { label: "AI Coach", href: "#home" },
 ];
 

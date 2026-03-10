@@ -12,8 +12,8 @@ const navLinks = [
     { label: "Home", href: "#home" },
     { label: "Calculator", href: "#calculator" },
     { label: "Toolkit", href: "#toolkit" },
-    { label: "Diet Plan", href: "#diet" },
-    { label: "Macros", href: "#macros" },
+    { label: "Diet Architect", href: "#diet" },
+    { label: "Macro Breakdown", href: "#macros" },
     { label: "Roadmap", href: "#roadmap" },
     { label: "Progress", href: "/progress" },
     { label: "PRs", href: "/prs" },
@@ -24,7 +24,6 @@ const moreLinks = [
     { label: "Exercise Guide", href: "#exercise-guide" },
     { label: "Workout Timer", href: "#timer" },
     { label: "Phase Planner", href: "#planner" },
-    { label: "Knowledge Base", href: "#knowledge" },
 ];
 
 export function Navbar() {
