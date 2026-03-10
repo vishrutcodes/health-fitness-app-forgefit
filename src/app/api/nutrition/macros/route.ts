@@ -9,7 +9,10 @@ export async function POST(req: NextRequest) {
         // 1. Prepare available database keys for the LLM context
         // so it can map free-text entries to our strict deterministic DB.
         const dbContext = Object.values(LOCAL_NUTRITION_DB).map(
-            f => `${f.id} (${f.name}, default unit: ${f.defaultUnit}, 1 ${f.defaultUnit} = ${f.unitWeightGrams}g)`
+            f => {
+                const portions = Object.entries(f.commonPortions).map(([desc, g]) => `${desc}=${g}g`).join(', ');
+                return `${f.id} (${f.name}, portions: ${portions})`;
+            }
         ).join("\n");
 
         const foodListString = foods
@@ -31,7 +34,8 @@ Do NOT calculate macros. ONLY calculate the exact "totalGrams" requested.
 RULES FOR TOTAL GRAMS:
 - If a user specifies Qty="6" and Amount="50g", totalGrams = 300.
 - If Qty is blank and Amount="60g", totalGrams = 60.
-- If Qty="2" and Amount is blank, and the matched DB item has unitWeightGrams=30, totalGrams = 60.
+- If Qty="2" and the matched DB item has a common portion matching the context, use that portion's gram weight × Qty.
+- If Qty and Amount are both blank, use the first common portion listed for that food.
 
 AVAILABLE DATABASE ITEMS:
 ${dbContext}

@@ -1,92 +1,108 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
+import { getFoodCatalog, LOCAL_NUTRITION_DB, resolveMeal } from "@/lib/nutrition-db";
 
 export async function POST(req: NextRequest) {
     try {
         const { target_calories, target_protein, target_carbs, target_fat, num_meals, preferences } = await req.json();
+
+        const foodCatalog = getFoodCatalog();
 
         const completion = await groq.chat.completions.create({
             model: "llama-3.3-70b-versatile",
             messages: [
                 {
                     role: "system",
-                    content: `You are an expert sports nutritionist and registered dietitian. Your task is to generate a highly realistic, delicious, and structurally sound daily meal plan based on the user's exact daily targets.
+                    content: `You are an expert sports nutritionist. Your task is to create a realistic, delicious daily meal plan.
 
-CRITICAL RULES:
-NO EQUAL DIVISION: Do NOT divide the total calories and macros equally across meals. Use a realistic distribution (e.g., Breakfast 25%, Lunch 35%, Dinner 30%, Snack 10% of total daily intake).
-COHERENT MEALS: Meals must be real, edible dishes (e.g., 'Grilled Chicken Rice Bowl with Avocado'), not random lists of ingredients.
-MACRO MATH MATTERS: The total sum of the meals MUST exactly equal the user's daily target. Furthermore, for every single meal, the math must align: (Protein_g * 4) + (Carbs_g * 4) + (Fat_g * 9) MUST roughly equal the stated calories for that meal.
+CRITICAL: You MUST ONLY use foods from the database below. Each ingredient must reference a valid foodId and a portionKey or weightGrams.
 
-OUTPUT FORMAT: You must return ONLY valid JSON matching this exact schema:
+AVAILABLE FOOD DATABASE:
+${foodCatalog}
+
+RULES:
+1. Use ONLY foodId values that appear in the database above
+2. For each ingredient, specify either a "portionKey" (exact match from the Portions list) OR a "weightGrams" value
+3. Use "qty" to multiply portions (e.g., qty:2 with portionKey "1 large egg" = 2 large eggs)
+4. Create coherent, real dishes — not random ingredient lists
+5. Try to get close to the user's macro targets by choosing appropriate foods and quantities, but DO NOT fabricate numbers
+6. Distribute meals realistically (breakfast lighter, lunch/dinner heavier)
+
+OUTPUT FORMAT — return ONLY valid JSON:
 {
   "meals": [
-    { 
-      "meal_name": "Breakfast", 
-      "dish": "String", 
-      "ingredients": ["String"],
-      "recipe": "String (Short, punchy 2-step prep instructions)", 
-      "protein": Number, 
-      "carbs": Number, 
-      "fat": Number,
-      "calories": Number
+    {
+      "meal_name": "Breakfast",
+      "dish": "Descriptive Dish Name",
+      "recipe": "Short 1-2 sentence cooking instructions",
+      "ingredients": [
+        { "foodId": "egg_whole_large", "portionKey": "1 large egg", "qty": 3 },
+        { "foodId": "bread_whole_wheat", "portionKey": "2 slices", "qty": 1 },
+        { "foodId": "avocado", "portionKey": "1/2 avocado (75g)", "qty": 1 },
+        { "foodId": "olive_oil", "portionKey": "1 tsp (5ml)", "qty": 1 }
+      ]
     }
   ]
 }`
                 },
                 {
                     role: "user",
-                    content: `Target Calories: ${target_calories}
-Target Macros: ${target_protein}g P, ${target_carbs}g C, ${target_fat}g F
-Number of Meals: ${num_meals}
-Preferences/Allergies: ${preferences}`
+                    content: `Create a meal plan targeting approximately:
+- Calories: ${target_calories} kcal
+- Protein: ${target_protein}g
+- Carbs: ${target_carbs}g
+- Fat: ${target_fat}g
+- Number of Meals: ${num_meals}
+- Preferences/Allergies: ${preferences || "No specific preferences"}
+
+Pick food combinations and quantities that get as close to these targets as possible using the available database.`
                 }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.3,
-            max_tokens: 2000,
+            temperature: 0.4,
+            max_tokens: 3000,
         });
 
         const data = JSON.parse(completion.choices[0].message.content || "{}");
 
-        // Mathematical Corrector Engine:
-        // LLMs are terrible at math. We scale the LLM's proportional distribution 
-        // to EXACTLY match the user's strict input targets, providing zero-drift accuracy.
-        if (data.meals && Array.isArray(data.meals)) {
-            let sumP = 0, sumC = 0, sumF = 0;
-            data.meals.forEach((m: any) => {
-                sumP += Number(m.protein) || 0;
-                sumC += Number(m.carbs) || 0;
-                sumF += Number(m.fat) || 0;
-            });
-
-            // Prevent div by zero
-            sumP = sumP || 1; sumC = sumC || 1; sumF = sumF || 1;
-
-            let runningP = 0, runningC = 0, runningF = 0;
-
-            for (let i = 0; i < data.meals.length; i++) {
-                const meal = data.meals[i];
-                if (i === data.meals.length - 1) {
-                    // Last meal gets the exact remainder to ensure 100% sum compliance
-                    meal.protein = Math.max(0, Number(target_protein) - runningP);
-                    meal.carbs = Math.max(0, Number(target_carbs) - runningC);
-                    meal.fat = Math.max(0, Number(target_fat) - runningF);
-                } else {
-                    meal.protein = Math.round((Number(meal.protein) / sumP) * Number(target_protein));
-                    meal.carbs = Math.round((Number(meal.carbs) / sumC) * Number(target_carbs));
-                    meal.fat = Math.round((Number(meal.fat) / sumF) * Number(target_fat));
-
-                    runningP += meal.protein;
-                    runningC += meal.carbs;
-                    runningF += meal.fat;
-                }
-
-                // Force true calorie calculation based on the perfectly scaled macros
-                meal.calories = Math.round((meal.protein * 4) + (meal.carbs * 4) + (meal.fat * 9));
-            }
+        if (!data.meals || !Array.isArray(data.meals)) {
+            return NextResponse.json(
+                { success: false, error: "AI returned invalid meal structure" },
+                { status: 500 }
+            );
         }
 
-        return NextResponse.json({ success: true, data });
+        // Resolve all macros from the REAL nutrition database — NO LLM numbers used
+        const resolvedMeals = data.meals.map((meal: any, idx: number) => {
+            const rawIngredients = (meal.ingredients || []).map((ing: any) => ({
+                foodId: String(ing.foodId || ""),
+                portionKey: ing.portionKey ? String(ing.portionKey) : undefined,
+                weightGrams: ing.weightGrams ? Number(ing.weightGrams) : undefined,
+                qty: ing.qty ? Number(ing.qty) : 1
+            })).filter((ing: any) => LOCAL_NUTRITION_DB[ing.foodId]); // Filter out any invalid IDs
+
+            const resolved = resolveMeal(
+                meal.dish || `Meal ${idx + 1}`,
+                meal.recipe || "",
+                rawIngredients
+            );
+
+            return {
+                meal_name: meal.meal_name || `Meal ${idx + 1}`,
+                dish: resolved.dish,
+                recipe: resolved.recipe,
+                ingredients: resolved.ingredients,
+                protein: resolved.totalProtein,
+                carbs: resolved.totalCarbs,
+                fat: resolved.totalFat,
+                calories: resolved.totalCalories
+            };
+        });
+
+        return NextResponse.json({
+            success: true,
+            data: { meals: resolvedMeals }
+        });
 
     } catch (error: any) {
         console.error("AI Diet Generation Error:", error);

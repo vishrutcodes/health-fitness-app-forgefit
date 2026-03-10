@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
+import { getFoodCatalog, LOCAL_NUTRITION_DB, resolveMeal } from "@/lib/nutrition-db";
 
 export async function POST(req: NextRequest) {
     try {
@@ -9,56 +10,78 @@ export async function POST(req: NextRequest) {
         if (targetCarbs === undefined || targetCarbs < 0) throw new Error("targetCarbs missing or invalid");
         if (targetFat === undefined || targetFat < 0) throw new Error("targetFat missing or invalid");
 
+        const foodCatalog = getFoodCatalog();
+
         const completion = await groq.chat.completions.create({
             model: "llama-3.3-70b-versatile",
             messages: [
                 {
                     role: "system",
-                    content: `You are an expert clinical nutritionist developing a tailored meal alternative for a client's diet plan.
+                    content: `You are an expert nutritionist creating ONE alternative meal.
 
-Your task is to generate exactly ONE realistic, edible meal (dish) that fits the provided macronutrient targets with a strict +/- 3g variance for each macro.
+CRITICAL: You MUST ONLY use foods from the database below. Each ingredient must reference a valid foodId and portionKey or weightGrams.
 
-CRITICAL RULES:
-- If an "avoidDish" is provided, the new dish MUST BE COMPLETELY DIFFERENT from it.
-- NO CALORIES FIELD: Do NOT include a 'calories' field in your response. The backend will calculate it mathematically.
-- Ensure the meal consists of logical ingredients.
-- Return ONLY valid JSON matching this exact schema:
+AVAILABLE FOOD DATABASE:
+${foodCatalog}
+
+RULES:
+1. Use ONLY foodId values from the database above
+2. For each ingredient, specify a "portionKey" (exact match) OR "weightGrams"
+3. Use "qty" to multiply portions
+4. The meal MUST BE COMPLETELY DIFFERENT from the avoidDish
+5. Try to approximate the target macros using appropriate food choices and quantities
+
+OUTPUT FORMAT — return ONLY valid JSON:
 {
-    "dish": "String (e.g., 'Spiced Lentil Salad with Quinoa')",
-    "ingredients": ["String"],
-    "recipe": "String (Short, punchy 2-step prep instructions)",
-    "protein": Number,
-    "carbs": Number,
-    "fat": Number
+    "dish": "Descriptive Dish Name",
+    "recipe": "Short 1-2 sentence cooking instructions",
+    "ingredients": [
+        { "foodId": "string", "portionKey": "string", "qty": number }
+    ]
 }
 `
                 },
                 {
                     role: "user",
                     content: `Meal Name: ${mealName || "Meal"}
-Target Macros (Must hit within 3g variance): ${targetProtein}g Protein, ${targetCarbs}g Carbs, ${targetFat}g Fat
-Avoid this dish: ${avoidDish || "None"}`
+Approximate Target: ${targetProtein}g Protein, ${targetCarbs}g Carbs, ${targetFat}g Fat
+Avoid this dish: ${avoidDish || "None"}
+Generate a COMPLETELY DIFFERENT dish that gets close to these targets.`
                 }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.5,
-            max_tokens: 800,
+            temperature: 0.6,
+            max_tokens: 1200,
         });
 
         const data = JSON.parse(completion.choices[0].message.content || "{}");
 
-        // Force zero-drift on macros by strictly enforcing the targets over what the LLM guessed
-        data.protein = Number(targetProtein);
-        data.carbs = Number(targetCarbs);
-        data.fat = Number(targetFat);
+        // Resolve macros from the real database
+        const rawIngredients = (data.ingredients || []).map((ing: any) => ({
+            foodId: String(ing.foodId || ""),
+            portionKey: ing.portionKey ? String(ing.portionKey) : undefined,
+            weightGrams: ing.weightGrams ? Number(ing.weightGrams) : undefined,
+            qty: ing.qty ? Number(ing.qty) : 1
+        })).filter((ing: any) => LOCAL_NUTRITION_DB[ing.foodId]);
 
-        // Mathematical guarantee for calories on the backend
-        data.calories = Math.round((data.protein * 4) + (data.carbs * 4) + (data.fat * 9));
+        const resolved = resolveMeal(
+            data.dish || "Alternative Meal",
+            data.recipe || "",
+            rawIngredients
+        );
 
-        // Pass back the meal name since the LLM schema doesn't include it.
-        data.meal_name = mealName || "Alternative Meal";
+        const meal = {
+            meal_name: mealName || "Alternative Meal",
+            dish: resolved.dish,
+            recipe: resolved.recipe,
+            ingredients: resolved.ingredients,
+            protein: resolved.totalProtein,
+            carbs: resolved.totalCarbs,
+            fat: resolved.totalFat,
+            calories: resolved.totalCalories
+        };
 
-        return NextResponse.json({ success: true, meal: data });
+        return NextResponse.json({ success: true, meal });
 
     } catch (error: any) {
         console.error("AI Diet Swap Error:", error);
