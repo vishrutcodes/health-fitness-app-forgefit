@@ -51,6 +51,7 @@ export function AiCoachDialog() {
         <>
             {/* Floating trigger button */}
             <button
+                id="ai-coach-trigger"
                 onClick={() => setOpen(true)}
                 className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-14 items-center justify-center gap-2 rounded-full px-5 bg-linear-to-br from-forge-orange to-forge-orange-light text-white shadow-xl shadow-forge-orange/30 hover:shadow-forge-orange/50 transition-all hover:scale-105"
             >

@@ -57,6 +57,7 @@ export function HeroSection() {
                     <Button
                         size="lg"
                         className="bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold text-base px-8 py-6 shadow-xl shadow-forge-orange/25 hover:shadow-forge-orange/50 transition-all glow-orange border-0"
+                        onClick={() => document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth' })}
                     >
                         Start Forging
                         <ArrowRight className="ml-2 h-5 w-5" />
@@ -65,6 +66,7 @@ export function HeroSection() {
                         size="lg"
                         variant="outline"
                         className="border-forge-orange/30 text-forge-orange-light hover:bg-forge-orange/10 hover:text-forge-orange text-base px-8 py-6 transition-all"
+                        onClick={() => document.getElementById('ai-coach-trigger')?.click()}
                     >
                         <Sparkles className="mr-2 h-5 w-5" />
                         Talk to AI Coach
