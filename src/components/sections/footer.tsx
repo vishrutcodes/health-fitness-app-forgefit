@@ -15,6 +15,7 @@ const quickLinks = [
     { label: "Phase Planner", href: "#planner" },
     { label: "Career Roadmap", href: "#roadmap" },
     { label: "AI Form Analyzer", href: "#form-analyzer" },
+    { label: "Masterclasses", href: "#knowledge-base" },
 ];
 
 export function Footer() {
