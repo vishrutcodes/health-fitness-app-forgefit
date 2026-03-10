@@ -97,13 +97,21 @@ function computeWeightForMacro(
 }
 
 /**
- * Build a single meal with EXACT macro targets using deterministic linear math.
+ * Build a single meal with EXACT macro targets using iterative convergence.
+ * 
+ * The naive 3-step approach fails because:
+ * - Carb sources contribute trace protein (e.g. rice has 2.7g protein/100g)
+ * - Fat sources contribute trace protein (e.g. almonds have 21g protein/100g!)
+ * - These trace proteins accumulate and overshoot the protein target
+ * 
+ * Solution: Iteratively compute weights, accounting for ALL cross-macro contributions.
  * 
  * Algorithm:
- * 1. Compute weight of protein source to hit protein target
- * 2. Subtract trace carbs from protein source, compute carb source weight for remaining
- * 3. Subtract trace fats from both, compute fat source weight for remaining
- * 4. Result: exact macros guaranteed by linear algebra
+ * 1. Estimate initial weights naively
+ * 2. Sum ALL protein from all sources (including trace)
+ * 3. If protein overshoots, reduce protein source weight to compensate
+ * 4. Recompute carb/fat source weights with updated trace subtraction
+ * 5. Repeat until converged (typically 3-4 iterations)
  */
 export function buildDeterministicMeal(
     mealName: string,
@@ -112,18 +120,56 @@ export function buildDeterministicMeal(
     targetCarbs: number,
     targetFat: number
 ): DeterministicMeal {
-    const ingredients: ResolvedIngredient[] = [];
-    let totalP = 0, totalC = 0, totalF = 0, totalCal = 0;
-
     // Validate food IDs exist, fallback to defaults if not
     const proteinId = LOCAL_NUTRITION_DB[selection.proteinId] ? selection.proteinId : 'chicken_breast_cooked';
     const carbId = LOCAL_NUTRITION_DB[selection.carbId] ? selection.carbId : 'white_rice_cooked';
     const fatId = LOCAL_NUTRITION_DB[selection.fatId] ? selection.fatId : 'olive_oil';
 
-    // Step 1: Protein source → hit protein target exactly
-    const proteinCalc = computeWeightForMacro(proteinId, 'protein', targetProtein);
-    if (proteinCalc && proteinCalc.weightGrams > 0) {
-        const resolved = resolveIngredient(proteinId, proteinCalc.weightGrams);
+    const pFood = LOCAL_NUTRITION_DB[proteinId];
+    const cFood = LOCAL_NUTRITION_DB[carbId];
+    const fFood = LOCAL_NUTRITION_DB[fatId];
+
+    if (!pFood || !cFood || !fFood) {
+        return emptyMeal(mealName, selection);
+    }
+
+    // Iterative convergence: 6 iterations is more than enough
+    let pWeight = 0, cWeight = 0, fWeight = 0;
+
+    for (let iter = 0; iter < 6; iter++) {
+        // Step 1: Compute carb source weight for remaining carbs
+        // (subtract trace carbs from protein source at current weight)
+        const traceCarbs_fromP = (pFood.carbsPer100g * pWeight) / 100;
+        const traceCarbs_fromF = (fFood.carbsPer100g * fWeight) / 100;
+        const neededCarbs = Math.max(0, targetCarbs - traceCarbs_fromP - traceCarbs_fromF);
+        cWeight = cFood.carbsPer100g > 0 ? (neededCarbs / cFood.carbsPer100g) * 100 : 0;
+
+        // Step 2: Compute fat source weight for remaining fat
+        // (subtract trace fat from protein + carb sources)
+        const traceFat_fromP = (pFood.fatPer100g * pWeight) / 100;
+        const traceFat_fromC = (cFood.fatPer100g * cWeight) / 100;
+        const neededFat = Math.max(0, targetFat - traceFat_fromP - traceFat_fromC);
+        fWeight = fFood.fatPer100g > 0 ? (neededFat / fFood.fatPer100g) * 100 : 0;
+
+        // Step 3: Compute protein source weight for remaining protein
+        // (subtract trace protein from carb + fat sources)
+        const tracePro_fromC = (cFood.proteinPer100g * cWeight) / 100;
+        const tracePro_fromF = (fFood.proteinPer100g * fWeight) / 100;
+        const neededProtein = Math.max(0, targetProtein - tracePro_fromC - tracePro_fromF);
+        pWeight = pFood.proteinPer100g > 0 ? (neededProtein / pFood.proteinPer100g) * 100 : 0;
+    }
+
+    // Clamp all weights to non-negative
+    pWeight = Math.max(0, pWeight);
+    cWeight = Math.max(0, cWeight);
+    fWeight = Math.max(0, fWeight);
+
+    // Resolve final ingredients
+    const ingredients: ResolvedIngredient[] = [];
+    let totalP = 0, totalC = 0, totalF = 0, totalCal = 0;
+
+    if (pWeight > 0) {
+        const resolved = resolveIngredient(proteinId, Math.round(pWeight));
         if (resolved) {
             ingredients.push(resolved);
             totalP += resolved.protein;
@@ -133,39 +179,29 @@ export function buildDeterministicMeal(
         }
     }
 
-    // Step 2: Carb source → hit carb target exactly (subtract trace carbs from protein source)
-    const remainingCarbs = Math.max(0, targetCarbs - totalC);
-    if (remainingCarbs > 0) {
-        const carbCalc = computeWeightForMacro(carbId, 'carbs', remainingCarbs);
-        if (carbCalc && carbCalc.weightGrams > 0) {
-            const resolved = resolveIngredient(carbId, carbCalc.weightGrams);
-            if (resolved) {
-                ingredients.push(resolved);
-                totalP += resolved.protein;
-                totalC += resolved.carbs;
-                totalF += resolved.fat;
-                totalCal += resolved.calories;
-            }
+    if (cWeight > 0) {
+        const resolved = resolveIngredient(carbId, Math.round(cWeight));
+        if (resolved) {
+            ingredients.push(resolved);
+            totalP += resolved.protein;
+            totalC += resolved.carbs;
+            totalF += resolved.fat;
+            totalCal += resolved.calories;
         }
     }
 
-    // Step 3: Fat source → hit fat target exactly (subtract trace fats from protein + carb sources)
-    const remainingFat = Math.max(0, targetFat - totalF);
-    if (remainingFat > 0) {
-        const fatCalc = computeWeightForMacro(fatId, 'fat', remainingFat);
-        if (fatCalc && fatCalc.weightGrams > 0) {
-            const resolved = resolveIngredient(fatId, fatCalc.weightGrams);
-            if (resolved) {
-                ingredients.push(resolved);
-                totalP += resolved.protein;
-                totalC += resolved.carbs;
-                totalF += resolved.fat;
-                totalCal += resolved.calories;
-            }
+    if (fWeight > 0) {
+        const resolved = resolveIngredient(fatId, Math.round(fWeight));
+        if (resolved) {
+            ingredients.push(resolved);
+            totalP += resolved.protein;
+            totalC += resolved.carbs;
+            totalF += resolved.fat;
+            totalCal += resolved.calories;
         }
     }
 
-    // Step 4: Add optional extras (veggies, condiments) — these add minimal cals
+    // Add optional extras (veggies/condiments — minimal cals, not macro-counted)
     if (selection.extras) {
         for (const extraId of selection.extras) {
             const food = LOCAL_NUTRITION_DB[extraId];
@@ -185,7 +221,7 @@ export function buildDeterministicMeal(
 
     return {
         meal_name: mealName,
-        dish: selection.dish || `${LOCAL_NUTRITION_DB[proteinId]?.name || 'Protein'} with ${LOCAL_NUTRITION_DB[carbId]?.name || 'Carbs'}`,
+        dish: selection.dish || `${pFood.name} with ${cFood.name}`,
         recipe: selection.recipe || '',
         ingredients,
         protein: parseFloat(totalP.toFixed(1)),
@@ -195,13 +231,29 @@ export function buildDeterministicMeal(
     };
 }
 
+function emptyMeal(mealName: string, selection: MealFoodSelection): DeterministicMeal {
+    return {
+        meal_name: mealName,
+        dish: selection.dish || "Meal",
+        recipe: selection.recipe || '',
+        ingredients: [],
+        protein: 0, carbs: 0, fat: 0, calories: 0
+    };
+}
+
 /**
  * Generate a complete deterministic diet plan.
+ * 
+ * Uses iterative calorie ceiling enforcement:
+ * 1. Compute initial macro targets from calorie/protein inputs
+ * 2. Build all meals with deterministic math
+ * 3. If actual calories overshoot target, reduce carb target and rebuild
+ * 4. Repeat until calories are at or below target (max 5 iterations)
  * 
  * @param targetCalories - Total daily calorie target
  * @param targetProtein - Total daily protein target (grams)
  * @param mealSelections - LLM-chosen food IDs per meal
- * @returns Plan with EXACT macro targets hit
+ * @returns Plan with calorie and protein targets hit accurately
  */
 export function generateDeterministicPlan(
     targetCalories: number,
@@ -215,29 +267,44 @@ export function generateDeterministicPlan(
     const proteinCal = targetProtein * 4;
     const fatCal = targetCalories * 0.25; // 25% fat standard
     const targetFat = fatCal / 9;
-    const carbsCal = targetCalories - proteinCal - fatCal;
-    const targetCarbs = Math.max(0, carbsCal / 4);
+    let carbsCal = targetCalories - proteinCal - fatCal;
+    let targetCarbs = Math.max(0, carbsCal / 4);
 
-    // Per-meal targets (equal distribution)
-    const mealTargetP = targetProtein / numMeals;
-    const mealTargetC = targetCarbs / numMeals;
-    const mealTargetF = targetFat / numMeals;
+    // Iterative calorie ceiling enforcement
+    let meals: DeterministicMeal[] = [];
+    let actualTotalCal = 0;
+    let actualTotalP = 0;
 
-    // Build each meal with deterministic math
-    const meals: DeterministicMeal[] = [];
-    let actualTotalCal = 0, actualTotalP = 0;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const mealTargetP = targetProtein / numMeals;
+        const mealTargetC = targetCarbs / numMeals;
+        const mealTargetF = targetFat / numMeals;
 
-    for (let i = 0; i < numMeals; i++) {
-        const meal = buildDeterministicMeal(
-            mealNames[i] || `Meal ${i + 1}`,
-            mealSelections[i],
-            mealTargetP,
-            mealTargetC,
-            mealTargetF
-        );
-        meals.push(meal);
-        actualTotalCal += meal.calories;
-        actualTotalP += meal.protein;
+        meals = [];
+        actualTotalCal = 0;
+        actualTotalP = 0;
+
+        for (let i = 0; i < numMeals; i++) {
+            const meal = buildDeterministicMeal(
+                mealNames[i] || `Meal ${i + 1}`,
+                mealSelections[i],
+                mealTargetP,
+                mealTargetC,
+                mealTargetF
+            );
+            meals.push(meal);
+            actualTotalCal += meal.calories;
+            actualTotalP += meal.protein;
+        }
+
+        // Check if we strictly meet the ceiling (zero tolerance for overshooting)
+        const calOvershoot = actualTotalCal - targetCalories;
+        if (calOvershoot <= 0) break;
+
+        // Reduce carb target to compensate for calorie overshoot
+        // Over-correct slightly (+10 cals) to ensure we drop below the ceiling next iteration
+        const carbReduction = (calOvershoot + 10) / 4;
+        targetCarbs = Math.max(0, targetCarbs - carbReduction);
     }
 
     return {
