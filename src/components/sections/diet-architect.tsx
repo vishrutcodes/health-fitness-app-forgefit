@@ -242,22 +242,22 @@ export function DietArchitect() {
                                 <motion.div key="plan" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
                                     {/* Summary Banner */}
                                     <div className="rounded-2xl bg-slate-900/80 border border-forge-orange/30 shadow-lg shadow-forge-orange/10 overflow-hidden">
-                                        <div className="grid grid-cols-4 gap-4 p-4">
-                                            <div className="text-center border-r border-white/10 last:border-0">
-                                                <p className="text-xs font-bold text-forge-orange uppercase tracking-wider mb-1">Calories</p>
-                                                <p className="text-2xl font-black text-white">{plan.targetCalories}</p>
+                                        <div className="grid grid-cols-4 gap-1 sm:gap-4 p-3 sm:p-4">
+                                            <div className="text-center border-r border-white/10">
+                                                <p className="text-[10px] sm:text-xs font-bold text-forge-orange uppercase tracking-wider mb-1">Calories</p>
+                                                <p className="text-base sm:text-2xl font-black text-white">{plan.targetCalories}</p>
                                             </div>
                                             <div className="text-center border-r border-white/10">
-                                                <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Protein</p>
-                                                <p className="text-2xl font-black text-white">{plan.targetProtein}g</p>
+                                                <p className="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Protein</p>
+                                                <p className="text-base sm:text-2xl font-black text-white">{plan.targetProtein}g</p>
                                             </div>
                                             <div className="text-center border-r border-white/10">
-                                                <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Carbs</p>
-                                                <p className="text-2xl font-black text-white">{plan.targetCarbs}g</p>
+                                                <p className="text-[10px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Carbs</p>
+                                                <p className="text-base sm:text-2xl font-black text-white">{plan.targetCarbs}g</p>
                                             </div>
                                             <div className="text-center">
-                                                <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">Fat</p>
-                                                <p className="text-2xl font-black text-white">{plan.targetFat}g</p>
+                                                <p className="text-[10px] sm:text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">Fat</p>
+                                                <p className="text-base sm:text-2xl font-black text-white">{plan.targetFat}g</p>
                                             </div>
                                         </div>
                                         <div className="px-4 pb-3 flex items-center justify-center gap-2 border-t border-white/5 pt-3">
