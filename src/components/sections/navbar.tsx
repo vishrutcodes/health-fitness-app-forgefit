@@ -10,18 +10,18 @@ import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
     { label: "Home", href: "#home" },
-    { label: "Calculator", href: "#calculator" },
-    { label: "Toolkit", href: "#toolkit" },
     { label: "Diet Architect", href: "#diet" },
     { label: "Macro Breakdown", href: "#macros" },
+    { label: "AI Form Analyzer", href: "#form-analyzer" },
+    { label: "Exercise Guide", href: "#exercise-guide" },
     { label: "Roadmap", href: "#roadmap" },
     { label: "Progress", href: "/progress" },
     { label: "PRs", href: "/prs" },
 ];
 
 const moreLinks = [
-    { label: "AI Form Analyzer", href: "#form-analyzer" },
-    { label: "Exercise Guide", href: "#exercise-guide" },
+    { label: "Calculator", href: "#calculator" },
+    { label: "Toolkit", href: "#toolkit" },
     { label: "Workout Timer", href: "#timer" },
     { label: "Phase Planner", href: "#planner" },
 ];
