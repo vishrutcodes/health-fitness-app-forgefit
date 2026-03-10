@@ -24,6 +24,7 @@ const moreLinks = [
     { label: "Toolkit", href: "#toolkit" },
     { label: "Workout Timer", href: "#timer" },
     { label: "Phase Planner", href: "#planner" },
+    { label: "Masterclasses", href: "#knowledge-base" },
 ];
 
 export function Navbar() {
