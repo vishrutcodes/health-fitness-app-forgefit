@@ -52,10 +52,10 @@ export function ParticleBackground() {
                     density: {
                         enable: true,
                     },
-                    value: 220,
+                    value: 242,
                 },
                 opacity: {
-                    value: { min: 0.15, max: 0.5 },
+                    value: { min: 0.15, max: 0.55 },
                 },
                 shape: {
                     type: "circle",
