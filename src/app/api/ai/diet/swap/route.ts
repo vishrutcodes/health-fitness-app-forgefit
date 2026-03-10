@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
-import { getFoodCatalog, LOCAL_NUTRITION_DB, resolveMeal, scaleSingleMealToTarget } from "@/lib/nutrition-db";
+import { buildDeterministicMeal, getFoodOptionsForLLM, MealFoodSelection } from "@/lib/diet-algorithm";
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,82 +10,65 @@ export async function POST(req: NextRequest) {
         if (targetCarbs === undefined || targetCarbs < 0) throw new Error("targetCarbs missing or invalid");
         if (targetFat === undefined || targetFat < 0) throw new Error("targetFat missing or invalid");
 
-        const foodCatalog = getFoodCatalog();
+        const foodOptions = getFoodOptionsForLLM();
 
+        // Step 1: LLM picks ONLY food IDs for a replacement meal
         const completion = await groq.chat.completions.create({
             model: "llama-3.3-70b-versatile",
             messages: [
                 {
                     role: "system",
-                    content: `You are an expert nutritionist creating ONE alternative meal.
+                    content: `You are a meal planner. Pick food IDs for ONE replacement meal.
 
-CRITICAL: You MUST ONLY use foods from the database below. Each ingredient must reference a valid foodId and portionKey or weightGrams.
+AVAILABLE FOODS:
+${foodOptions}
 
-AVAILABLE FOOD DATABASE:
-${foodCatalog}
+Pick exactly ONE proteinId, ONE carbId, ONE fatId from the lists above.
+Make it COMPLETELY DIFFERENT from the dish to avoid.
+Give it a dish name and short recipe.
 
-RULES:
-1. Use ONLY foodId values from the database above
-2. For each ingredient, specify a "portionKey" (exact match) OR "weightGrams"
-3. Use "qty" to multiply portions
-4. The meal MUST BE COMPLETELY DIFFERENT from the avoidDish
-5. Try to approximate the target macros using appropriate food choices and quantities
-
-OUTPUT FORMAT — return ONLY valid JSON:
+OUTPUT FORMAT - ONLY valid JSON:
 {
-    "dish": "Descriptive Dish Name",
-    "recipe": "Short 1-2 sentence cooking instructions",
-    "ingredients": [
-        { "foodId": "string", "portionKey": "string", "qty": number }
-    ]
-}
-`
+    "proteinId": "string",
+    "carbId": "string",
+    "fatId": "string",
+    "extras": [],
+    "dish": "Dish Name",
+    "recipe": "Short cooking instructions."
+}`
                 },
                 {
                     role: "user",
-                    content: `Meal Name: ${mealName || "Meal"}
-Approximate Target: ${targetProtein}g Protein, ${targetCarbs}g Carbs, ${targetFat}g Fat
-Avoid this dish: ${avoidDish || "None"}
-Generate a COMPLETELY DIFFERENT dish that gets close to these targets.`
+                    content: `Meal: ${mealName || "Meal"}
+AVOID this dish: ${avoidDish || "None"}
+Pick DIFFERENT foods for a replacement. Only pick food IDs.`
                 }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.6,
-            max_tokens: 1200,
+            temperature: 0.8,
+            max_tokens: 500,
         });
 
         const data = JSON.parse(completion.choices[0].message.content || "{}");
 
-        // Resolve macros from the real database
-        const rawIngredients = (data.ingredients || []).map((ing: any) => ({
-            foodId: String(ing.foodId || ""),
-            portionKey: ing.portionKey ? String(ing.portionKey) : undefined,
-            weightGrams: ing.weightGrams ? Number(ing.weightGrams) : undefined,
-            qty: ing.qty ? Number(ing.qty) : 1
-        })).filter((ing: any) => LOCAL_NUTRITION_DB[ing.foodId]);
-
-        const resolved = resolveMeal(
-            data.dish || "Alternative Meal",
-            data.recipe || "",
-            rawIngredients
-        );
-
-        // Scale portions to match the original meal's calorie target
-        const targetMealCalories = Math.round(
-            (targetProtein * 4) + (targetCarbs * 4) + (targetFat * 9)
-        );
-        const scaledResolved = scaleSingleMealToTarget(resolved, targetMealCalories, targetProtein);
-
-        const meal = {
-            meal_name: mealName || "Alternative Meal",
-            dish: scaledResolved.dish,
-            recipe: scaledResolved.recipe,
-            ingredients: scaledResolved.ingredients,
-            protein: scaledResolved.totalProtein,
-            carbs: scaledResolved.totalCarbs,
-            fat: scaledResolved.totalFat,
-            calories: scaledResolved.totalCalories
+        // Step 2: Build selection from LLM output
+        const selection: MealFoodSelection = {
+            proteinId: String(data.proteinId || "chicken_breast_cooked"),
+            carbId: String(data.carbId || "brown_rice_cooked"),
+            fatId: String(data.fatId || "peanut_butter"),
+            extras: Array.isArray(data.extras) ? data.extras.map(String) : [],
+            dish: String(data.dish || "Alternative Meal"),
+            recipe: String(data.recipe || "")
         };
+
+        // Step 3: DETERMINISTIC MATH — exact same targets, guaranteed accurate
+        const meal = buildDeterministicMeal(
+            mealName || "Alternative Meal",
+            selection,
+            targetProtein,
+            targetCarbs,
+            targetFat
+        );
 
         return NextResponse.json({ success: true, meal });
 

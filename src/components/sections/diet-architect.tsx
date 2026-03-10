@@ -67,20 +67,12 @@ export function DietArchitect() {
         if (cals > 0 && pro > 0 && meals > 0) {
             setLoading(true);
             try {
-                const proteinCal = pro * 4;
-                const remainingCal = cals - proteinCal;
-                const fatCal = cals * 0.25;
-                const fat = Math.round(fatCal / 9);
-                const carbs = Math.round((remainingCal - fatCal) / 4);
-
                 const res = await fetch("/api/ai/diet", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         target_calories: cals,
                         target_protein: pro,
-                        target_carbs: carbs,
-                        target_fat: fat,
                         num_meals: meals,
                         preferences: preferences || "No specific preferences"
                     })
