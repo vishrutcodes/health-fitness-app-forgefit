@@ -133,29 +133,53 @@ export function buildDeterministicMeal(
         return emptyMeal(mealName, selection);
     }
 
+    // Step 0: Pre-calculate macros from "extras" (veggies/condiments)
+    // We must subtract these from the targets so the main ingredients compensate for them
+    let extraP = 0, extraC = 0, extraF = 0, extraCal = 0;
+    const resolvedExtras: ResolvedIngredient[] = [];
+
+    if (selection.extras) {
+        for (const extraId of selection.extras) {
+            const food = LOCAL_NUTRITION_DB[extraId];
+            if (!food) continue;
+            // Get standard portion for the extra
+            const firstPortion = Object.entries(food.commonPortions)[0];
+            if (!firstPortion) continue;
+
+            const resolved = resolveIngredient(extraId, firstPortion[1]);
+            if (resolved) {
+                resolvedExtras.push(resolved);
+                extraP += resolved.protein;
+                extraC += resolved.carbs;
+                extraF += resolved.fat;
+                extraCal += resolved.calories;
+            }
+        }
+    }
+
     // Iterative convergence: 6 iterations is more than enough
     let pWeight = 0, cWeight = 0, fWeight = 0;
 
     for (let iter = 0; iter < 6; iter++) {
         // Step 1: Compute carb source weight for remaining carbs
-        // (subtract trace carbs from protein source at current weight)
+        // (subtract trace carbs from protein, fat, and extras)
         const traceCarbs_fromP = (pFood.carbsPer100g * pWeight) / 100;
         const traceCarbs_fromF = (fFood.carbsPer100g * fWeight) / 100;
-        const neededCarbs = Math.max(0, targetCarbs - traceCarbs_fromP - traceCarbs_fromF);
+        const neededCarbs = Math.max(0, targetCarbs - traceCarbs_fromP - traceCarbs_fromF - extraC);
         cWeight = cFood.carbsPer100g > 0 ? (neededCarbs / cFood.carbsPer100g) * 100 : 0;
 
         // Step 2: Compute fat source weight for remaining fat
-        // (subtract trace fat from protein + carb sources)
+        // (subtract trace fat from protein, carbs, and extras)
         const traceFat_fromP = (pFood.fatPer100g * pWeight) / 100;
         const traceFat_fromC = (cFood.fatPer100g * cWeight) / 100;
-        const neededFat = Math.max(0, targetFat - traceFat_fromP - traceFat_fromC);
+        const neededFat = Math.max(0, targetFat - traceFat_fromP - traceFat_fromC - extraF);
         fWeight = fFood.fatPer100g > 0 ? (neededFat / fFood.fatPer100g) * 100 : 0;
 
         // Step 3: Compute protein source weight for remaining protein
-        // (subtract trace protein from carb + fat sources)
+        // (subtract trace protein from carbs, fat, and extras)
         const tracePro_fromC = (cFood.proteinPer100g * cWeight) / 100;
         const tracePro_fromF = (fFood.proteinPer100g * fWeight) / 100;
-        const neededProtein = Math.max(0, targetProtein - tracePro_fromC - tracePro_fromF);
+        const neededProtein = Math.max(0, targetProtein - tracePro_fromC - tracePro_fromF - extraP);
         pWeight = pFood.proteinPer100g > 0 ? (neededProtein / pFood.proteinPer100g) * 100 : 0;
     }
 
@@ -166,8 +190,9 @@ export function buildDeterministicMeal(
 
     // Resolve final ingredients
     const ingredients: ResolvedIngredient[] = [];
-    let totalP = 0, totalC = 0, totalF = 0, totalCal = 0;
+    let totalP = extraP, totalC = extraC, totalF = extraF, totalCal = extraCal;
 
+    // Push the primary ingredients first
     if (pWeight > 0) {
         const resolved = resolveIngredient(proteinId, Math.round(pWeight));
         if (resolved) {
@@ -201,23 +226,8 @@ export function buildDeterministicMeal(
         }
     }
 
-    // Add optional extras (veggies/condiments — minimal cals, not macro-counted)
-    if (selection.extras) {
-        for (const extraId of selection.extras) {
-            const food = LOCAL_NUTRITION_DB[extraId];
-            if (!food) continue;
-            const firstPortion = Object.entries(food.commonPortions)[0];
-            if (!firstPortion) continue;
-            const resolved = resolveIngredient(extraId, firstPortion[1]);
-            if (resolved) {
-                ingredients.push(resolved);
-                totalP += resolved.protein;
-                totalC += resolved.carbs;
-                totalF += resolved.fat;
-                totalCal += resolved.calories;
-            }
-        }
-    }
+    // Push the pre-calculated extras at the end
+    ingredients.push(...resolvedExtras);
 
     return {
         meal_name: mealName,
