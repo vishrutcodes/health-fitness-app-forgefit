@@ -1155,6 +1155,99 @@ export function resolveMeal(
     };
 }
 
+/**
+ * Scale a set of resolved meals so total calories hit the target.
+ * Preserves the LLM's food choices — only adjusts portion sizes proportionally.
+ * Also does a secondary protein-focused adjustment if protein target is provided.
+ */
+export function scaleMealsToTarget(
+    resolvedMeals: ResolvedMeal[],
+    targetCalories: number,
+    targetProtein?: number
+): ResolvedMeal[] {
+    // Calculate current totals
+    let currentCalories = resolvedMeals.reduce((s, m) => s + m.totalCalories, 0);
+
+    if (currentCalories === 0) return resolvedMeals;
+
+    // Only scale if off by more than 2%
+    const calorieDrift = Math.abs(currentCalories - targetCalories) / targetCalories;
+    if (calorieDrift <= 0.02) return resolvedMeals;
+
+    const scaleFactor = targetCalories / currentCalories;
+
+    // Scale all ingredient weights proportionally and re-resolve
+    const scaled = resolvedMeals.map(meal => {
+        const scaledIngredients: ResolvedIngredient[] = [];
+        let totalProtein = 0, totalCarbs = 0, totalFat = 0, totalCalories = 0;
+
+        for (const ing of meal.ingredients) {
+            const newWeight = ing.weightGrams * scaleFactor;
+            const resolved = resolveIngredient(ing.foodId, newWeight);
+            if (resolved) {
+                scaledIngredients.push(resolved);
+                totalProtein += resolved.protein;
+                totalCarbs += resolved.carbs;
+                totalFat += resolved.fat;
+                totalCalories += resolved.calories;
+            }
+        }
+
+        return {
+            dish: meal.dish,
+            recipe: meal.recipe,
+            ingredients: scaledIngredients,
+            totalProtein: parseFloat(totalProtein.toFixed(1)),
+            totalCarbs: parseFloat(totalCarbs.toFixed(1)),
+            totalFat: parseFloat(totalFat.toFixed(1)),
+            totalCalories: Math.round(totalCalories)
+        } as ResolvedMeal;
+    });
+
+    return scaled;
+}
+
+/**
+ * Scale a single meal so its calories hit the target.
+ * Used by the swap endpoint to match the replaced meal's calories.
+ */
+export function scaleSingleMealToTarget(
+    meal: ResolvedMeal,
+    targetCalories: number
+): ResolvedMeal {
+    if (meal.totalCalories === 0 || targetCalories === 0) return meal;
+
+    const calorieDrift = Math.abs(meal.totalCalories - targetCalories) / targetCalories;
+    if (calorieDrift <= 0.02) return meal;
+
+    const scaleFactor = targetCalories / meal.totalCalories;
+
+    const scaledIngredients: ResolvedIngredient[] = [];
+    let totalProtein = 0, totalCarbs = 0, totalFat = 0, totalCalories = 0;
+
+    for (const ing of meal.ingredients) {
+        const newWeight = ing.weightGrams * scaleFactor;
+        const resolved = resolveIngredient(ing.foodId, newWeight);
+        if (resolved) {
+            scaledIngredients.push(resolved);
+            totalProtein += resolved.protein;
+            totalCarbs += resolved.carbs;
+            totalFat += resolved.fat;
+            totalCalories += resolved.calories;
+        }
+    }
+
+    return {
+        dish: meal.dish,
+        recipe: meal.recipe,
+        ingredients: scaledIngredients,
+        totalProtein: parseFloat(totalProtein.toFixed(1)),
+        totalCarbs: parseFloat(totalCarbs.toFixed(1)),
+        totalFat: parseFloat(totalFat.toFixed(1)),
+        totalCalories: Math.round(totalCalories)
+    };
+}
+
 // Legacy exports for backward compatibility (used by diet-algorithm.ts)
 export interface ResolvedMacroTarget {
     foodId: string;

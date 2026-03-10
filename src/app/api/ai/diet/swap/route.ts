@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
-import { getFoodCatalog, LOCAL_NUTRITION_DB, resolveMeal } from "@/lib/nutrition-db";
+import { getFoodCatalog, LOCAL_NUTRITION_DB, resolveMeal, scaleSingleMealToTarget } from "@/lib/nutrition-db";
 
 export async function POST(req: NextRequest) {
     try {
@@ -70,15 +70,21 @@ Generate a COMPLETELY DIFFERENT dish that gets close to these targets.`
             rawIngredients
         );
 
+        // Scale portions to match the original meal's calorie target
+        const targetMealCalories = Math.round(
+            (targetProtein * 4) + (targetCarbs * 4) + (targetFat * 9)
+        );
+        const scaledResolved = scaleSingleMealToTarget(resolved, targetMealCalories);
+
         const meal = {
             meal_name: mealName || "Alternative Meal",
-            dish: resolved.dish,
-            recipe: resolved.recipe,
-            ingredients: resolved.ingredients,
-            protein: resolved.totalProtein,
-            carbs: resolved.totalCarbs,
-            fat: resolved.totalFat,
-            calories: resolved.totalCalories
+            dish: scaledResolved.dish,
+            recipe: scaledResolved.recipe,
+            ingredients: scaledResolved.ingredients,
+            protein: scaledResolved.totalProtein,
+            carbs: scaledResolved.totalCarbs,
+            fat: scaledResolved.totalFat,
+            calories: scaledResolved.totalCalories
         };
 
         return NextResponse.json({ success: true, meal });

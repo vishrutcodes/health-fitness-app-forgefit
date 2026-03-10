@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
-import { getFoodCatalog, LOCAL_NUTRITION_DB, resolveMeal } from "@/lib/nutrition-db";
+import { getFoodCatalog, LOCAL_NUTRITION_DB, resolveMeal, scaleMealsToTarget } from "@/lib/nutrition-db";
 
 export async function POST(req: NextRequest) {
     try {
@@ -73,7 +73,7 @@ Pick food combinations and quantities that get as close to these targets as poss
         }
 
         // Resolve all macros from the REAL nutrition database — NO LLM numbers used
-        const resolvedMeals = data.meals.map((meal: any, idx: number) => {
+        const rawResolved = data.meals.map((meal: any, idx: number) => {
             const rawIngredients = (meal.ingredients || []).map((ing: any) => ({
                 foodId: String(ing.foodId || ""),
                 portionKey: ing.portionKey ? String(ing.portionKey) : undefined,
@@ -81,23 +81,33 @@ Pick food combinations and quantities that get as close to these targets as poss
                 qty: ing.qty ? Number(ing.qty) : 1
             })).filter((ing: any) => LOCAL_NUTRITION_DB[ing.foodId]); // Filter out any invalid IDs
 
-            const resolved = resolveMeal(
-                meal.dish || `Meal ${idx + 1}`,
-                meal.recipe || "",
-                rawIngredients
-            );
-
             return {
                 meal_name: meal.meal_name || `Meal ${idx + 1}`,
-                dish: resolved.dish,
-                recipe: resolved.recipe,
-                ingredients: resolved.ingredients,
-                protein: resolved.totalProtein,
-                carbs: resolved.totalCarbs,
-                fat: resolved.totalFat,
-                calories: resolved.totalCalories
+                resolved: resolveMeal(
+                    meal.dish || `Meal ${idx + 1}`,
+                    meal.recipe || "",
+                    rawIngredients
+                )
             };
         });
+
+        // Scale portions proportionally so total calories hit the user's target
+        const scaledMeals = scaleMealsToTarget(
+            rawResolved.map((m: any) => m.resolved),
+            target_calories,
+            target_protein
+        );
+
+        const resolvedMeals = rawResolved.map((m: any, idx: number) => ({
+            meal_name: m.meal_name,
+            dish: scaledMeals[idx].dish,
+            recipe: scaledMeals[idx].recipe,
+            ingredients: scaledMeals[idx].ingredients,
+            protein: scaledMeals[idx].totalProtein,
+            carbs: scaledMeals[idx].totalCarbs,
+            fat: scaledMeals[idx].totalFat,
+            calories: scaledMeals[idx].totalCalories
+        }));
 
         return NextResponse.json({
             success: true,
