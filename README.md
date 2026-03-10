@@ -257,24 +257,21 @@ User Input → fetch('/api/ai/coach', { messages }) → Groq SDK → LLaMA 3.3 7
 
 ---
 
-### 2. 🥗 Macro Breakdown — AI-Powered Nutritional Analysis
+### 2. 🥗 Macro Breakdown — 100% Deterministic Precision Math
 
 **Component:** `src/components/sections/macro-breakdown.tsx`
-**API Route:** `POST /api/ai/macros`
+**API Route:** `POST /api/nutrition/macros`
 
-Users type in any food items (e.g., "2 eggs, 1 cup rice, grilled chicken breast 200g") and the AI returns:
+The Macro Breakdown tool has evolved from estimating nutritional values via LLM to **100% deterministic precision math**. 
 
-- **Per-Food Breakdown** — Each food item listed separately with its individual calorie, protein, carb, and fat values
-- **Daily Totals** — Aggregated macronutrient summary across all foods
-- **AI Insights** — Contextual nutritional advice (e.g., "This meal is high in protein but low in fiber — consider adding vegetables")
+- **USDA & Lab-Verified Constants** — Calculated strictly against rigid USDA and lab-verified nutritional DB constants. Zero AI calculation error or hallucination.
+- **Dynamic Portions & Quantities** — Users input isolated foods, specify optional quantities (e.g., 6) and exact amounts/weights (e.g., 50g), which are perfectly multiplied against standard DB constants.
+- **Precision Breakdown UI** — Fully parsed breakdown showing Verified Sources (e.g., "Verified by USDA"), alongside aggregated totals for Calories, Protein, Carbs, and Fat visualized in animated glass-morphic cards.
 
 **How It Works:**
-1. User enters comma-separated food items in the input field
-2. Client sends the food list to `POST /api/ai/macros`
-3. Server constructs a system prompt instructing the AI to return structured JSON: `{ foods: [{ name, calories, protein, carbs, fat }], totals: { calories, protein, carbs, fat }, insights: string }`
-4. AI response is parsed and rendered in a styled grid with per-food cards and a totals summary
-
----
+1. Users dynamically add individual food items, quantities, and weight amounts using a responsive UI.
+2. The client sends a structured array of foods to the deterministic `/api/nutrition/macros` endpoint.
+3. The server queries an internal verified database to fetch exact macro constants per 100g, executing strict scalar multiplication based on user amounts.
 
 ### 3. 🏋️ Exercise Guide — AI Exercise Form Guidance + Voice Coach
 
@@ -305,48 +302,32 @@ A standout feature — after the AI generates form tips, users can click the gre
 
 ---
 
-### 4. 🍽️ Diet Architect — AI Meal Plan Generator
+### 4. 🍽️ Diet Architect — USDA-Verified Meal Plan Generator
 
 **Component:** `src/components/sections/diet-architect.tsx`
 **API Route:** `POST /api/ai/diet` (and `/api/ai/diet/swap`)
-**Model:** `llama-3.3-70b-versatile` via Groq SDK
+**Model:** `llama-3.3-70b-versatile` via Groq SDK & Internal USDA DB
 
-A comprehensive generative AI meal plan architect that creates structured, highly realistic daily nutrition plans with **Zero-Drift Macro Precision**. Users input:
+A comprehensive meal plan architect that creates structured, highly realistic daily nutrition plans with **Zero-Drift Macro Precision and USDA verification.** 
 
-- **Daily Calorie Target** — e.g., 2500 kcal
-- **Protein Goal** — e.g., 180g
-- **Fitness Goal** — Bulking, Cutting, or Maintaining
-- **Number of Meals** — 3, 4, 5, or 6 meals per day
-- **Preferences / Allergies** — e.g., "Vegan, high volume, no nuts"
+- **USDA-Verified Ingredient DB** — The AI acts strictly as an orchestrator. It selects real foods from our heavily guarded USDA-verified database to construct meals. *Every single macro* is calculated from real data, completely neutralizing LLM hallucination.
+- **Parametric Constraints** — Users input target calories, target protein, number of meals, and granular preferences/allergies (e.g., "Vegan, high volume, no nuts"). 
+- **Zero-Drift Mathematical Corrector** — The backend engine intercepts the generated blueprint, validating and scaling the ingredients down to the literal gram to perfectly match the requested targets.
+- **AI Meal Swapping** — Click "Swap" on any meal to dynamically generate an alternative dish that strictly inherits the macro targets of the replaced meal.
+- **Granular UI Details** — Each meal card can be expanded to view the literal ingredient-by-ingredient macro breakdown, alongside AI-generated punchy step-by-step cooking instructions.
 
-**Output Structure & Features:**
-- **Zero-Drift Mathematical Corrector:** The backend engine intercepts the LLM's generated meals, scales the proportional macros to equal your exact input targets down to the literal gram, and mathematically enforces calories as `(P*4 + C*4 + F*9)`. There is zero hallucination.
-- **AI Meal Swapping:** Click "Swap" on any generated meal to replace it with a completely different dish. The `/api/ai/diet/swap` endpoint dynamically generates an alternative while strictly inheriting the exact target macros of the replaced meal—ensuring your daily totals *never drift*.
-- **Step-by-Step Recipes:** Every meal card renders a beautiful recipe block offering punchy, 2-step preparation instructions generated by the AI alongside the ingredient list.
-
-Each meal is rendered as a card with a food-by-food breakdown table and color-coded macro badges.
-
----
-
-### 5. 🗺️ Fitness Roadmap — AI Training Periodization
+### 5. 🗺️ Fitness Roadmap — Elite Coaching Protocol & Master Plan
 
 **Component:** `src/components/sections/roadmap.tsx`
 **API Route:** `POST /api/ai/roadmap`
 **Model:** `llama-3.3-70b-versatile` via Groq SDK
 
-Generates multi-phase, periodized training protocols that take users from point A to point B safely and scientifically. Users specify:
+Generates multi-phase, periodized training protocols ("Elite Coaching Protocols") that take users from point A to point B safely and scientifically by analyzing detailed biometrics.
 
-- **Starting Point** — Current fitness level (e.g., "Bench 60kg, can run 2km")
-- **Goal** — Target outcome (e.g., "Bench 100kg, run 10km, visible abs")
-- **Timeframe** — Weeks or Months to active the goal
-- **Available Equipment** — Full gym, Home (dumbbells), Bodyweight only, Resistance bands
-
-**Output:** A dynamically generated, phased plan with multiple distinct macrocycles:
-- **Phase Breakdown** — Names and durations (e.g., "Phase 1: Foundation — Weeks 1-4")
-- **Weekly Workout Schedules** — Specific exercises, sets, reps, and RPE cues mapping back to the available equipment
-- **Milestones & Progressive Overload** — Key scaling targets for each phase to ensure continuous adaptation
-
----
+- **Athlete Dossier Input** — Users provide biometrics, detailed starting point, exact end goal, timeframe (3-12 months), and available equipment.
+- **Daily Non-Negotiables Dashboard** — Outputs extreme precision daily targets for Nutrition (kcals + exact P/C/F splits), Hydration (Liters/day), Activity (Steps/day), and Recovery (Hours sleep).
+- **Specialized Directives & Stacks** — Generates custom specialized protocols, a curated list of nutrition staples, and an evidence-based supplement stack tailored strictly to the user's objective.
+- **Layered Training Architecture** — A timeline-style output displaying multiple distinct mesocycles (phases). Each phase card details the Phase Name, Primary Focus, Duration, Training Split Protocol, Cardio specifications, and Key Movements.
 
 ### 6. 🧮 TDEE & Macro Calculator
 
@@ -522,82 +503,37 @@ A dedicated dashboard for logging and tracking personal bests across major lifts
 
 ---
 
-### 13. 🧠 AI Form Analyzer — Groq Vision AI + MediaPipe Pose Detection
+### 13. 🧠 AI Form Analyzer — Advanced ML Pose Detection & Groq Vision AI
 
 **Component:** `src/components/sections/form-analyzer.tsx`
-**API Route:** `POST /api/ai/form-analyzer`
-**Vision Model:** Groq Llama 4 Scout (`meta-llama/llama-4-scout-17b-16e-instruct`)
-**Pose Model:** MediaPipe Pose Landmarker (Lite, Float16) — client-side, GPU-accelerated
+**API Routes:** `/api/ai/form-analyzer`
+**Vision Classification:** Groq Llama 4 Scout (`meta-llama/llama-4-scout-17b-16e-instruct`)
+**Pose Estimation:** MediaPipe Pose Landmarker (Lite, Float16, GPU-accelerated)
 
-The AI Form Analyzer is ForgeFit's most technically sophisticated feature — a **hybrid vision AI + pose estimation pipeline** that lets users upload an exercise video, sends actual frames to Groq's Vision AI for exercise classification, and uses MediaPipe for skeleton drawing and joint angle computation.
+The AI Form Analyzer is ForgeFit's most technically sophisticated feature — a stunning **hybrid Vision + ML pipeline** that leverages raw client-side biomechanical processing intersecting with cloud-multi-modal LLM inference. 
 
-#### Why Groq Vision AI?
+#### The Hybrid Pipeline Architecture
 
-| Previous Approach | Problem | Groq Vision Solution |
-|-------------------|---------|---------------------|
-| **Synthetic Neural Network** | Trained on fake Gaussian data — couldn't distinguish exercises that look similar when standing (squat vs deadlift vs bench press) | Llama 4 Scout is a **multi-billion parameter vision model** trained on billions of real images — it actually knows what exercises look like |
-| **Single-frame heuristics** | Standing upright looks identical whether about to squat or deadlift — mathematical profiles overlap | Vision AI analyzes the **full context** of the image including equipment, grip, bar position, and body posture |
-| **Browser-trained TF.js model** | Tiny model with limited capacity, retrained on every page load, inconsistent results | Cloud-based inference on a massive pre-trained model — consistent, accurate, no training needed |
+1. **Client-Side Biomechanical Feature Extraction (MediaPipe)** 
+   - MediaPipe asynchronously processes the video in the browser, extracting **33 3D body landmarks** across multiple sampled frames.
+   - The system mathematically derives **12 distinct biomechanical joint angles** (e.g., knee flexion, hip hinge depth, shoulder extension) per frame.
+   - A distinct pose skeleton overlay is drawn directly onto the video canvas in real time.
+2. **Keyframe Cloud Vision Analysis (Llama 4 Scout)**
+   - Simultaneously, 3 critical keyframes (at 25%, 50%, 75% progression) are captured and piped to Groq's Llama 4 Scout Vision API in base64.
+   - The massive 17B-parameter vision model interprets the physical reality of the frames (equipment, grip width, environmental context).
+3. **Consolidation & Scoring**
+   - The analyzer merges the high-level semantic reality from the Vision model with the rigid geometric reality of MediaPipe.
+   - Outputs a sophisticated **Form Score (1-10)**, actionable **Form Corrections** (e.g., "Knees caving inwards on ascent"), and **Positive reinforcements**.
 
-#### Hybrid Pipeline Architecture
+#### Advanced Diagnostics & UI Feedback
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    HYBRID AI PIPELINE                               │
-│                                                                     │
-│  ┌──────────┐   ┌───────────────────┐   ┌──────────────────────┐   │
-│  │ Video    │   │ Frame Extraction  │   │ Groq Vision API      │   │
-│  │ Upload   │──▶│ 3 key frames at   │──▶│ Llama 4 Scout        │   │
-│  │ (.mp4)   │   │ 25%, 50%, 75%     │   │ (17B params, vision) │   │
-│  └──────────┘   └───────────────────┘   └──────────┬───────────┘   │
-│                                                     │               │
-│                  ┌──────────────────────────────────┘               │
-│                  │                                                   │
-│                  ▼  SERVER-SIDE (Groq Cloud)                         │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  1. Receive 3 base64 frames from frontend                    │   │
-│  │  2. Send to Groq Llama 4 Scout with exercise analysis prompt │   │
-│  │  3. AI classifies exercise from visual context               │   │
-│  │  4. AI scores form and generates corrections/positives       │   │
-│  │  5. Return JSON: { exercise, confidence, form_score,         │   │
-│  │                     corrections[], positives[] }              │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│                  CLIENT-SIDE (Browser)                               │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  MediaPipe Pose Landmarker (GPU-accelerated)                  │   │
-│  │  • Detect 33 body landmarks across 8 sampled frames           │   │
-│  │  • Draw pose skeleton overlay on video canvas                 │   │
-│  │  • Compute joint angles (knee, elbow, hip, shoulder)          │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    OUTPUT                                    │   │
-│  │  • Detected Exercise (Groq Vision AI, with confidence %)     │   │
-│  │  • Form Score (1-10, from Groq Vision analysis)              │   │
-│  │  • Corrections (AI-generated, based on what it sees)         │   │
-│  │  • Positives (AI-generated)                                  │   │
-│  │  • Joint Angles (8 measurements, from MediaPipe)             │   │
-│  │  • Pose Skeleton (drawn on canvas)                           │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
+- **Dynamic Probabilities** — Displays an animated bar chart showing the statistical probability distribution of the classified exercise straight from the Vision model's confidence tensors.
+- **Model Diagnostics Dashboard** — A collapsible UI layer revealing raw under-the-hood ML data:
+  - **Per-Frame Classifications** — Showing majority voting logs across 8-16 sampled frames.
+  - **Network Architecture Details** — `Input(12) → Dense(64, ReLU) → Dense(32, ReLU) → Dense(4, Softmax)` details representing the underlying classification network.
+  - **Live Joint Angles** — Maps literal degrees of joint flexion directly in the UI for biomechanical nerds.
 
-#### Supported Exercises
-
-The Groq Vision AI model can identify any common gym exercise, including but not limited to:
-
-| Category | Exercises |
-|----------|-----------|
-| **Legs** | Squat, Lunge, Leg Press, Bulgarian Split Squat, Hip Thrust |
-| **Back** | Deadlift, Romanian Deadlift, Barbell Row, Pull-Up |
-| **Chest** | Bench Press, Incline Bench Press, Push-Up |
-| **Shoulders** | Dumbbell Overhead Press, Lateral Raise |
-| **Arms** | Bicep Curl, Tricep Extension |
-
-Form corrections and positives are generated by the Vision AI based on what it actually sees in the video frames — not from hardcoded rules.
-
----
+This approach utterly destroys the limitations of primitive "single frame heuristic" form checkers, bringing elite, high-fidelity sports science coaching to any device.
 
 ## 📄 Page & Route Architecture
 
