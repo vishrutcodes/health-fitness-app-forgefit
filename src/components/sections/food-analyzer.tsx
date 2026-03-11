@@ -144,7 +144,7 @@ export function FoodAnalyzer() {
             <div className="container mx-auto px-4">
                 <div className="flex flex-col items-center mb-12 text-center">
                     <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter uppercase mb-4">
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-forge-orange to-forge-red">
+                        <span className="text-transparent bg-clip-text bg-linear-to-r from-forge-orange to-forge-red">
                             God-Mode
                         </span>{" "}
                         Food Scanner
@@ -166,7 +166,7 @@ export function FoodAnalyzer() {
                             <CardDescription>Position your food clearly in the frame.</CardDescription>
                         </CardHeader>
                         
-                        <CardContent className="p-0 relative flex-grow bg-black aspect-video flex items-center justify-center">
+                        <CardContent className="p-0 relative grow bg-black aspect-video flex items-center justify-center">
                             {/* Hidden canvas for capturing the frame */}
                             <canvas ref={canvasRef} className="hidden" />
                             
@@ -217,7 +217,7 @@ export function FoodAnalyzer() {
                                 <Button 
                                     size="lg" 
                                     onClick={handleScan}
-                                    className="w-full bg-gradient-to-r from-forge-orange to-forge-red text-white uppercase font-bold tracking-wider hover:opacity-90 transition-opacity button-glow font-display"
+                                    className="w-full bg-linear-to-r from-forge-orange to-forge-red text-white uppercase font-bold tracking-wider hover:opacity-90 transition-opacity button-glow font-display"
                                 >
                                     <Scan className="mr-2 h-5 w-5" /> Analyze Plate
                                 </Button>
@@ -232,7 +232,7 @@ export function FoodAnalyzer() {
                                     <Progress value={scanProgress} className="w-full">
                                         <ProgressTrack className="h-2 bg-zinc-800">
                                             <ProgressIndicator 
-                                                className="bg-gradient-to-r from-forge-orange to-forge-red" 
+                                                className="bg-linear-to-r from-forge-orange to-forge-red" 
                                                 style={{ width: `${scanProgress}%` }}
                                             />
                                         </ProgressTrack>
@@ -265,7 +265,7 @@ export function FoodAnalyzer() {
                             <CardDescription>Zero-tolerance math applied to detected volume.</CardDescription>
                         </CardHeader>
                         
-                        <CardContent className="p-6 flex-grow">
+                        <CardContent className="p-6 grow">
                             {!result ? (
                                 <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4">
                                     <div className="w-16 h-16 rounded-full border-2 border-dashed border-zinc-700 flex items-center justify-center">
