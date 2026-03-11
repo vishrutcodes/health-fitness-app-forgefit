@@ -1026,6 +1026,716 @@ export const LOCAL_NUTRITION_DB: Record<string, NutritionFact> = {
         category: "nut",
         commonPortions: { "1/4 cup (38g)": 38, "1 oz (28g)": 28 },
         source: "USDA"
+    },
+
+    // ========================================================================
+    // INDIAN CUISINE
+    // ========================================================================
+    "roti": {
+        id: "roti",
+        name: "Roti (Chapati, Whole Wheat)",
+        proteinPer100g: 8.7,
+        carbsPer100g: 50.0,
+        fatPer100g: 3.7,
+        fiberPer100g: 4.0,
+        category: "grain",
+        commonPortions: { "1 roti (40g)": 40, "2 rotis (80g)": 80 },
+        source: "USDA"
+    },
+    "naan": {
+        id: "naan",
+        name: "Naan Bread",
+        proteinPer100g: 9.1,
+        carbsPer100g: 50.7,
+        fatPer100g: 3.3,
+        category: "grain",
+        commonPortions: { "1 naan (90g)": 90, "1/2 naan (45g)": 45 },
+        source: "USDA"
+    },
+    "paratha": {
+        id: "paratha",
+        name: "Paratha (Plain, Pan-Fried)",
+        proteinPer100g: 7.5,
+        carbsPer100g: 45.0,
+        fatPer100g: 10.0,
+        category: "grain",
+        commonPortions: { "1 paratha (80g)": 80, "2 parathas (160g)": 160 },
+        source: "Nutritionix"
+    },
+    "dal_cooked": {
+        id: "dal_cooked",
+        name: "Dal (Lentil Curry, Cooked)",
+        proteinPer100g: 5.1,
+        carbsPer100g: 10.0,
+        fatPer100g: 2.7,
+        fiberPer100g: 3.5,
+        category: "legume",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "USDA"
+    },
+    "rajma_cooked": {
+        id: "rajma_cooked",
+        name: "Rajma (Kidney Bean Curry)",
+        proteinPer100g: 5.5,
+        carbsPer100g: 13.0,
+        fatPer100g: 2.5,
+        category: "legume",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "chole_cooked": {
+        id: "chole_cooked",
+        name: "Chole (Chickpea Curry)",
+        proteinPer100g: 5.3,
+        carbsPer100g: 15.0,
+        fatPer100g: 3.5,
+        category: "legume",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "chicken_curry": {
+        id: "chicken_curry",
+        name: "Chicken Curry (Indian Style)",
+        proteinPer100g: 14.0,
+        carbsPer100g: 4.5,
+        fatPer100g: 8.0,
+        category: "protein",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "biryani_chicken": {
+        id: "biryani_chicken",
+        name: "Chicken Biryani",
+        proteinPer100g: 8.5,
+        carbsPer100g: 22.0,
+        fatPer100g: 5.5,
+        category: "grain",
+        commonPortions: { "1 plate (300g)": 300, "1/2 plate (150g)": 150 },
+        source: "Nutritionix"
+    },
+    "idli": {
+        id: "idli",
+        name: "Idli (Steamed Rice Cake)",
+        proteinPer100g: 3.9,
+        carbsPer100g: 26.0,
+        fatPer100g: 0.4,
+        category: "grain",
+        commonPortions: { "1 idli (40g)": 40, "2 idlis (80g)": 80, "3 idlis (120g)": 120 },
+        source: "USDA"
+    },
+    "dosa_plain": {
+        id: "dosa_plain",
+        name: "Dosa (Plain)",
+        proteinPer100g: 4.0,
+        carbsPer100g: 30.0,
+        fatPer100g: 5.0,
+        category: "grain",
+        commonPortions: { "1 dosa (100g)": 100, "1 masala dosa (150g)": 150 },
+        source: "Nutritionix"
+    },
+    "samosa": {
+        id: "samosa",
+        name: "Samosa (Fried, Potato Filling)",
+        proteinPer100g: 4.5,
+        carbsPer100g: 32.0,
+        fatPer100g: 18.0,
+        category: "grain",
+        commonPortions: { "1 samosa (80g)": 80, "2 samosas (160g)": 160 },
+        source: "Nutritionix"
+    },
+    "upma": {
+        id: "upma",
+        name: "Upma (Semolina Porridge)",
+        proteinPer100g: 3.5,
+        carbsPer100g: 18.0,
+        fatPer100g: 4.0,
+        category: "grain",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "poha": {
+        id: "poha",
+        name: "Poha (Flattened Rice, Cooked)",
+        proteinPer100g: 2.5,
+        carbsPer100g: 22.0,
+        fatPer100g: 3.5,
+        category: "grain",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "palak_paneer": {
+        id: "palak_paneer",
+        name: "Palak Paneer (Spinach & Cottage Cheese)",
+        proteinPer100g: 6.5,
+        carbsPer100g: 4.0,
+        fatPer100g: 8.0,
+        category: "protein",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "butter_chicken": {
+        id: "butter_chicken",
+        name: "Butter Chicken (Murgh Makhani)",
+        proteinPer100g: 12.0,
+        carbsPer100g: 5.0,
+        fatPer100g: 10.0,
+        category: "protein",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "raita": {
+        id: "raita",
+        name: "Raita (Yogurt Condiment)",
+        proteinPer100g: 3.0,
+        carbsPer100g: 5.0,
+        fatPer100g: 2.5,
+        category: "dairy",
+        commonPortions: { "1/2 cup (100g)": 100, "1/4 cup (50g)": 50 },
+        source: "Nutritionix"
+    },
+    "puri": {
+        id: "puri",
+        name: "Puri (Deep Fried Bread)",
+        proteinPer100g: 7.0,
+        carbsPer100g: 40.0,
+        fatPer100g: 20.0,
+        category: "grain",
+        commonPortions: { "1 puri (30g)": 30, "2 puris (60g)": 60 },
+        source: "Nutritionix"
+    },
+    "khichdi": {
+        id: "khichdi",
+        name: "Khichdi (Rice & Lentil Porridge)",
+        proteinPer100g: 3.5,
+        carbsPer100g: 14.0,
+        fatPer100g: 2.0,
+        category: "grain",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "aloo_gobi": {
+        id: "aloo_gobi",
+        name: "Aloo Gobi (Potato & Cauliflower)",
+        proteinPer100g: 2.5,
+        carbsPer100g: 10.0,
+        fatPer100g: 5.0,
+        category: "vegetable",
+        commonPortions: { "1 cup (200g)": 200, "1/2 cup (100g)": 100 },
+        source: "Nutritionix"
+    },
+    "curd_plain": {
+        id: "curd_plain",
+        name: "Curd / Dahi (Plain Yogurt)",
+        proteinPer100g: 3.5,
+        carbsPer100g: 4.7,
+        fatPer100g: 3.3,
+        category: "dairy",
+        commonPortions: { "1 cup (245g)": 245, "1/2 cup (122g)": 122 },
+        source: "USDA"
+    },
+
+    // ========================================================================
+    // MORE FRUITS
+    // ========================================================================
+    "watermelon": {
+        id: "watermelon",
+        name: "Watermelon",
+        proteinPer100g: 0.6,
+        carbsPer100g: 7.6,
+        fatPer100g: 0.2,
+        category: "fruit",
+        commonPortions: { "1 cup diced (152g)": 152, "1 wedge (286g)": 286 },
+        source: "USDA"
+    },
+    "grapes": {
+        id: "grapes",
+        name: "Grapes (Red/Green, Raw)",
+        proteinPer100g: 0.7,
+        carbsPer100g: 18.1,
+        fatPer100g: 0.2,
+        category: "fruit",
+        commonPortions: { "1 cup (151g)": 151, "10 grapes (50g)": 50 },
+        source: "USDA"
+    },
+    "pineapple": {
+        id: "pineapple",
+        name: "Pineapple (Raw)",
+        proteinPer100g: 0.5,
+        carbsPer100g: 13.1,
+        fatPer100g: 0.1,
+        category: "fruit",
+        commonPortions: { "1 cup chunks (165g)": 165, "1 slice (84g)": 84 },
+        source: "USDA"
+    },
+    "papaya": {
+        id: "papaya",
+        name: "Papaya (Raw)",
+        proteinPer100g: 0.5,
+        carbsPer100g: 10.8,
+        fatPer100g: 0.3,
+        category: "fruit",
+        commonPortions: { "1 cup cubed (145g)": 145, "1 small papaya (157g)": 157 },
+        source: "USDA"
+    },
+    "guava": {
+        id: "guava",
+        name: "Guava (Raw)",
+        proteinPer100g: 2.6,
+        carbsPer100g: 14.3,
+        fatPer100g: 1.0,
+        fiberPer100g: 5.4,
+        category: "fruit",
+        commonPortions: { "1 guava (55g)": 55, "1 cup (165g)": 165 },
+        source: "USDA"
+    },
+    "pomegranate": {
+        id: "pomegranate",
+        name: "Pomegranate Seeds",
+        proteinPer100g: 1.7,
+        carbsPer100g: 18.7,
+        fatPer100g: 1.2,
+        fiberPer100g: 4.0,
+        category: "fruit",
+        commonPortions: { "1/2 cup (87g)": 87, "1 cup (174g)": 174 },
+        source: "USDA"
+    },
+    "pear": {
+        id: "pear",
+        name: "Pear (Raw)",
+        proteinPer100g: 0.4,
+        carbsPer100g: 15.2,
+        fatPer100g: 0.1,
+        fiberPer100g: 3.1,
+        category: "fruit",
+        commonPortions: { "1 medium pear (178g)": 178, "100g": 100 },
+        source: "USDA"
+    },
+    "kiwi": {
+        id: "kiwi",
+        name: "Kiwi (Raw)",
+        proteinPer100g: 1.1,
+        carbsPer100g: 14.7,
+        fatPer100g: 0.5,
+        fiberPer100g: 3.0,
+        category: "fruit",
+        commonPortions: { "1 kiwi (69g)": 69, "2 kiwis (138g)": 138 },
+        source: "USDA"
+    },
+    "lychee": {
+        id: "lychee",
+        name: "Lychee (Raw)",
+        proteinPer100g: 0.8,
+        carbsPer100g: 16.5,
+        fatPer100g: 0.4,
+        category: "fruit",
+        commonPortions: { "1 cup (190g)": 190, "5 lychees (50g)": 50 },
+        source: "USDA"
+    },
+    "coconut_fresh": {
+        id: "coconut_fresh",
+        name: "Coconut Meat (Fresh)",
+        proteinPer100g: 3.3,
+        carbsPer100g: 15.2,
+        fatPer100g: 33.5,
+        fiberPer100g: 9.0,
+        category: "fruit",
+        commonPortions: { "1 cup shredded (80g)": 80, "1 piece (45g)": 45 },
+        source: "USDA"
+    },
+    "chiku": {
+        id: "chiku",
+        name: "Chikoo / Sapodilla",
+        proteinPer100g: 0.4,
+        carbsPer100g: 20.0,
+        fatPer100g: 1.1,
+        category: "fruit",
+        commonPortions: { "1 chikoo (170g)": 170, "100g": 100 },
+        source: "USDA"
+    },
+
+    // ========================================================================
+    // FAST FOOD & PREPARED FOODS
+    // ========================================================================
+    "pizza_cheese": {
+        id: "pizza_cheese",
+        name: "Pizza (Cheese, Regular Crust)",
+        proteinPer100g: 11.4,
+        carbsPer100g: 33.6,
+        fatPer100g: 10.4,
+        category: "grain",
+        commonPortions: { "1 slice (107g)": 107, "2 slices (214g)": 214 },
+        source: "USDA"
+    },
+    "burger_beef": {
+        id: "burger_beef",
+        name: "Hamburger (Single Patty, with Bun)",
+        proteinPer100g: 13.3,
+        carbsPer100g: 24.2,
+        fatPer100g: 11.8,
+        category: "protein",
+        commonPortions: { "1 burger (215g)": 215, "100g": 100 },
+        source: "USDA"
+    },
+    "french_fries": {
+        id: "french_fries",
+        name: "French Fries (Fried)",
+        proteinPer100g: 3.4,
+        carbsPer100g: 41.4,
+        fatPer100g: 14.7,
+        category: "carbs",
+        commonPortions: { "small (71g)": 71, "medium (117g)": 117, "large (154g)": 154 },
+        source: "USDA"
+    },
+    "fried_chicken": {
+        id: "fried_chicken",
+        name: "Fried Chicken (Breaded)",
+        proteinPer100g: 18.5,
+        carbsPer100g: 11.0,
+        fatPer100g: 15.8,
+        category: "protein",
+        commonPortions: { "1 piece (100g)": 100, "2 pieces (200g)": 200 },
+        source: "USDA"
+    },
+    "sandwich_turkey": {
+        id: "sandwich_turkey",
+        name: "Turkey Sandwich (Whole Wheat)",
+        proteinPer100g: 11.0,
+        carbsPer100g: 22.0,
+        fatPer100g: 5.0,
+        category: "protein",
+        commonPortions: { "1 sandwich (200g)": 200, "100g": 100 },
+        source: "Nutritionix"
+    },
+    "wrap_chicken": {
+        id: "wrap_chicken",
+        name: "Chicken Wrap",
+        proteinPer100g: 10.5,
+        carbsPer100g: 20.0,
+        fatPer100g: 7.5,
+        category: "protein",
+        commonPortions: { "1 wrap (250g)": 250, "100g": 100 },
+        source: "Nutritionix"
+    },
+
+    // ========================================================================
+    // SNACKS & SWEETS
+    // ========================================================================
+    "popcorn_plain": {
+        id: "popcorn_plain",
+        name: "Popcorn (Air-Popped, Plain)",
+        proteinPer100g: 12.9,
+        carbsPer100g: 77.9,
+        fatPer100g: 4.5,
+        fiberPer100g: 14.5,
+        category: "grain",
+        commonPortions: { "1 cup (8g)": 8, "3 cups (24g)": 24 },
+        source: "USDA"
+    },
+    "chips_potato": {
+        id: "chips_potato",
+        name: "Potato Chips (Regular)",
+        proteinPer100g: 5.7,
+        carbsPer100g: 52.9,
+        fatPer100g: 34.6,
+        category: "grain",
+        commonPortions: { "1 oz (28g)": 28, "small bag (42g)": 42 },
+        source: "USDA"
+    },
+    "biscuit_digestive": {
+        id: "biscuit_digestive",
+        name: "Digestive Biscuit",
+        proteinPer100g: 7.0,
+        carbsPer100g: 66.0,
+        fatPer100g: 20.0,
+        category: "grain",
+        commonPortions: { "1 biscuit (14g)": 14, "3 biscuits (42g)": 42 },
+        source: "Brand-Verified"
+    },
+    "ice_cream_vanilla": {
+        id: "ice_cream_vanilla",
+        name: "Ice Cream (Vanilla)",
+        proteinPer100g: 3.5,
+        carbsPer100g: 23.6,
+        fatPer100g: 11.0,
+        category: "dairy",
+        commonPortions: { "1/2 cup (66g)": 66, "1 cup (132g)": 132 },
+        source: "USDA"
+    },
+    "jalebi": {
+        id: "jalebi",
+        name: "Jalebi (Indian Sweet)",
+        proteinPer100g: 2.0,
+        carbsPer100g: 55.0,
+        fatPer100g: 14.0,
+        category: "condiment",
+        commonPortions: { "1 piece (30g)": 30, "3 pieces (90g)": 90 },
+        source: "Nutritionix"
+    },
+    "gulab_jamun": {
+        id: "gulab_jamun",
+        name: "Gulab Jamun",
+        proteinPer100g: 3.5,
+        carbsPer100g: 50.0,
+        fatPer100g: 12.0,
+        category: "condiment",
+        commonPortions: { "1 piece (40g)": 40, "2 pieces (80g)": 80 },
+        source: "Nutritionix"
+    },
+    "ladoo_besan": {
+        id: "ladoo_besan",
+        name: "Besan Ladoo",
+        proteinPer100g: 8.0,
+        carbsPer100g: 42.0,
+        fatPer100g: 25.0,
+        category: "condiment",
+        commonPortions: { "1 ladoo (30g)": 30, "2 ladoos (60g)": 60 },
+        source: "Nutritionix"
+    },
+
+    // ========================================================================
+    // MORE PROTEINS
+    // ========================================================================
+    "lamb_cooked": {
+        id: "lamb_cooked",
+        name: "Lamb (Cooked, Lean)",
+        proteinPer100g: 25.5,
+        carbsPer100g: 0,
+        fatPer100g: 14.5,
+        category: "protein",
+        commonPortions: { "100g": 100, "150g": 150 },
+        source: "USDA"
+    },
+    "pork_loin_cooked": {
+        id: "pork_loin_cooked",
+        name: "Pork Loin (Cooked, Lean)",
+        proteinPer100g: 27.3,
+        carbsPer100g: 0,
+        fatPer100g: 7.1,
+        category: "protein",
+        commonPortions: { "1 chop (145g)": 145, "100g": 100 },
+        source: "USDA"
+    },
+    "fish_tilapia_cooked": {
+        id: "fish_tilapia_cooked",
+        name: "Tilapia (Cooked)",
+        proteinPer100g: 26.2,
+        carbsPer100g: 0,
+        fatPer100g: 2.7,
+        category: "protein",
+        commonPortions: { "1 fillet (117g)": 117, "100g": 100 },
+        source: "USDA"
+    },
+    "turkey_breast_cooked": {
+        id: "turkey_breast_cooked",
+        name: "Turkey Breast (Roasted)",
+        proteinPer100g: 29.0,
+        carbsPer100g: 0,
+        fatPer100g: 1.0,
+        category: "protein",
+        commonPortions: { "3 slices (84g)": 84, "100g": 100 },
+        source: "USDA"
+    },
+    "bacon_cooked": {
+        id: "bacon_cooked",
+        name: "Bacon (Pan-Fried)",
+        proteinPer100g: 37.0,
+        carbsPer100g: 1.4,
+        fatPer100g: 42.0,
+        category: "protein",
+        commonPortions: { "2 slices (16g)": 16, "3 slices (24g)": 24 },
+        source: "USDA"
+    },
+    "prawns_cooked": {
+        id: "prawns_cooked",
+        name: "Prawns (Cooked)",
+        proteinPer100g: 24.0,
+        carbsPer100g: 0.2,
+        fatPer100g: 1.7,
+        category: "protein",
+        commonPortions: { "100g": 100, "6 prawns (84g)": 84 },
+        source: "USDA"
+    },
+
+    // ========================================================================
+    // MORE VEGETABLES
+    // ========================================================================
+    "cauliflower_cooked": {
+        id: "cauliflower_cooked",
+        name: "Cauliflower (Cooked)",
+        proteinPer100g: 1.8,
+        carbsPer100g: 4.1,
+        fatPer100g: 0.5,
+        category: "vegetable",
+        commonPortions: { "1 cup (124g)": 124, "100g": 100 },
+        source: "USDA"
+    },
+    "cabbage_raw": {
+        id: "cabbage_raw",
+        name: "Cabbage (Raw)",
+        proteinPer100g: 1.3,
+        carbsPer100g: 5.8,
+        fatPer100g: 0.1,
+        category: "vegetable",
+        commonPortions: { "1 cup shredded (89g)": 89, "100g": 100 },
+        source: "USDA"
+    },
+    "eggplant_cooked": {
+        id: "eggplant_cooked",
+        name: "Eggplant / Brinjal (Cooked)",
+        proteinPer100g: 0.8,
+        carbsPer100g: 8.7,
+        fatPer100g: 0.2,
+        category: "vegetable",
+        commonPortions: { "1 cup (99g)": 99, "100g": 100 },
+        source: "USDA"
+    },
+    "okra_cooked": {
+        id: "okra_cooked",
+        name: "Okra / Bhindi (Cooked)",
+        proteinPer100g: 1.9,
+        carbsPer100g: 7.5,
+        fatPer100g: 0.3,
+        category: "vegetable",
+        commonPortions: { "1 cup (160g)": 160, "100g": 100 },
+        source: "USDA"
+    },
+    "bitter_gourd": {
+        id: "bitter_gourd",
+        name: "Bitter Gourd / Karela (Cooked)",
+        proteinPer100g: 1.0,
+        carbsPer100g: 3.7,
+        fatPer100g: 0.2,
+        category: "vegetable",
+        commonPortions: { "1 cup (124g)": 124, "100g": 100 },
+        source: "USDA"
+    },
+    "bottle_gourd": {
+        id: "bottle_gourd",
+        name: "Bottle Gourd / Lauki (Cooked)",
+        proteinPer100g: 0.6,
+        carbsPer100g: 3.4,
+        fatPer100g: 0.0,
+        category: "vegetable",
+        commonPortions: { "1 cup (146g)": 146, "100g": 100 },
+        source: "USDA"
+    },
+    "beetroot_raw": {
+        id: "beetroot_raw",
+        name: "Beetroot (Raw)",
+        proteinPer100g: 1.6,
+        carbsPer100g: 9.6,
+        fatPer100g: 0.2,
+        category: "vegetable",
+        commonPortions: { "1 beet (82g)": 82, "1 cup (136g)": 136 },
+        source: "USDA"
+    },
+    "lettuce_raw": {
+        id: "lettuce_raw",
+        name: "Lettuce (Iceberg, Raw)",
+        proteinPer100g: 0.9,
+        carbsPer100g: 3.0,
+        fatPer100g: 0.1,
+        category: "vegetable",
+        commonPortions: { "1 cup shredded (72g)": 72, "1 leaf (20g)": 20 },
+        source: "USDA"
+    },
+
+    // ========================================================================
+    // MORE GRAINS & CEREALS
+    // ========================================================================
+    "cornflakes": {
+        id: "cornflakes",
+        name: "Cornflakes (Cereal)",
+        proteinPer100g: 7.5,
+        carbsPer100g: 84.0,
+        fatPer100g: 0.4,
+        category: "grain",
+        commonPortions: { "1 cup (30g)": 30, "100g": 100 },
+        source: "USDA"
+    },
+    "muesli": {
+        id: "muesli",
+        name: "Muesli (Dry)",
+        proteinPer100g: 9.7,
+        carbsPer100g: 66.0,
+        fatPer100g: 6.0,
+        category: "grain",
+        commonPortions: { "1/2 cup (45g)": 45, "1 cup (90g)": 90 },
+        source: "Brand-Verified"
+    },
+    "vermicelli_cooked": {
+        id: "vermicelli_cooked",
+        name: "Vermicelli / Seviyan (Cooked)",
+        proteinPer100g: 4.0,
+        carbsPer100g: 25.0,
+        fatPer100g: 0.5,
+        category: "grain",
+        commonPortions: { "1 cup (140g)": 140, "100g": 100 },
+        source: "USDA"
+    },
+    "semolina_dry": {
+        id: "semolina_dry",
+        name: "Semolina / Rava / Suji (Dry)",
+        proteinPer100g: 12.7,
+        carbsPer100g: 72.8,
+        fatPer100g: 1.1,
+        category: "grain",
+        commonPortions: { "1/4 cup (42g)": 42, "1/2 cup (84g)": 84 },
+        source: "USDA"
+    },
+
+    // ========================================================================
+    // MORE BEVERAGES
+    // ========================================================================
+    "chai_tea": {
+        id: "chai_tea",
+        name: "Chai / Tea (with Milk & Sugar)",
+        proteinPer100g: 1.2,
+        carbsPer100g: 5.5,
+        fatPer100g: 1.2,
+        category: "beverage",
+        commonPortions: { "1 cup (150ml)": 155, "1 small cup (100ml)": 103 },
+        source: "Nutritionix"
+    },
+    "coffee_milk_sugar": {
+        id: "coffee_milk_sugar",
+        name: "Coffee (with Milk & Sugar)",
+        proteinPer100g: 1.0,
+        carbsPer100g: 6.0,
+        fatPer100g: 1.0,
+        category: "beverage",
+        commonPortions: { "1 cup (240ml)": 245, "100ml": 103 },
+        source: "Nutritionix"
+    },
+    "lassi_sweet": {
+        id: "lassi_sweet",
+        name: "Lassi (Sweet, Yogurt Drink)",
+        proteinPer100g: 2.5,
+        carbsPer100g: 12.0,
+        fatPer100g: 2.0,
+        category: "beverage",
+        commonPortions: { "1 glass (200ml)": 210, "100ml": 105 },
+        source: "Nutritionix"
+    },
+    "sugarcane_juice": {
+        id: "sugarcane_juice",
+        name: "Sugarcane Juice",
+        proteinPer100g: 0.0,
+        carbsPer100g: 11.5,
+        fatPer100g: 0.0,
+        category: "beverage",
+        commonPortions: { "1 glass (250ml)": 260, "100ml": 104 },
+        source: "Nutritionix"
+    },
+    "buttermilk": {
+        id: "buttermilk",
+        name: "Buttermilk / Chaas",
+        proteinPer100g: 3.3,
+        carbsPer100g: 4.8,
+        fatPer100g: 0.9,
+        category: "beverage",
+        commonPortions: { "1 cup (245ml)": 245, "100ml": 100 },
+        source: "USDA"
     }
 };
 
