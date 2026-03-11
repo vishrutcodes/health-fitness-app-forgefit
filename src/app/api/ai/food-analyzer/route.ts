@@ -18,22 +18,30 @@ export async function POST(req: NextRequest) {
                     content: [
                         {
                             type: "text",
-                            text: `You are an expert nutritionist and computer vision AI. Analyze this image of a plate of food.
+                            text: `You are an expert nutritionist and computer vision AI. Analyze this image of food.
 
-TASK: Identify every distinct food item on the plate and strictly estimate its weight in grams.
+TASK: Identify every distinct food item visible and strictly estimate the TOTAL weight in grams for ALL pieces of that item combined.
+
+CRITICAL COUNTING RULES:
+- COUNT every individual piece carefully. If you see 2 bananas, report the COMBINED weight of BOTH bananas, not just one.
+- If you see 3 eggs, report the TOTAL weight of all 3 eggs combined.
+- Always count ALL visible pieces of the same food and sum their weights.
 
 You MUST respond in EXACTLY this JSON format, nothing else:
 [
   {
     "name": "<Standard name of the food item>",
-    "weight_g": <Estimated weight in grams>
+    "quantity": <Number of individual pieces counted>,
+    "weight_g": <TOTAL estimated weight of ALL pieces combined in grams>
   }
 ]
 
 RULES:
-- "name" should be the basic ingredient name (e.g., "Apple", "Chicken Breast", "Brown Rice", "Olive Oil", "Walnuts").
+- "name" should be the basic ingredient name (e.g., "Banana", "Chicken Breast", "Brown Rice", "Olive Oil", "Walnuts").
+- "quantity" is how many individual pieces/units you can see of this item.
+- "weight_g" is the TOTAL weight of ALL pieces combined. For example: 2 bananas at ~120g each = 240g total.
 - Be incredibly observant. Look for hidden calories like oils, sauces, or butter that might be mixed in.
-- "weight_g" must be a number representing your best anatomical estimate of the volume in grams based on plate size.
+- Estimate weight based on visual size relative to plate/surface.
 - If you see nothing resembling food, return an empty array [].
 - Respond with ONLY the JSON array, no markdown formatting (\`\`\`json), no backticks, no explanation. Just the raw array.`,
                         },
