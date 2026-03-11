@@ -5,6 +5,7 @@ import { CalculatorSection } from "@/components/sections/calculator";
 import { ToolkitSection } from "@/components/sections/toolkit";
 import { DietArchitect } from "@/components/sections/diet-architect";
 import { MacroBreakdown } from "@/components/sections/macro-breakdown";
+import { FoodAnalyzer } from "@/components/sections/food-analyzer";
 import { RoadmapSection } from "@/components/sections/roadmap";
 import { ExerciseGuide } from "@/components/sections/exercise-guide";
 import { FormAnalyzer } from "@/components/sections/form-analyzer";
@@ -25,6 +26,7 @@ export default function Home() {
         <ToolkitSection />
         <DietArchitect />
         <MacroBreakdown />
+        <FoodAnalyzer />
         <RoadmapSection />
         <ExerciseGuide />
         <FormAnalyzer />
