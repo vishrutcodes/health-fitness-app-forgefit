@@ -146,10 +146,11 @@ export function FoodAnalyzer() {
                 <div className="flex flex-col items-center mb-12 text-center">
                     <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter uppercase mb-4">
                         <span className="text-transparent bg-clip-text bg-linear-to-r from-forge-orange to-forge-red">
-                            God-Mode
+                            AI-Powered
                         </span>{" "}
-                        Food Scanner
+                        Food Analysis
                     </h2>
+                    <p className="text-sm uppercase tracking-widest text-forge-orange/60 font-bold -mt-2 mb-2">Using Computer Vision</p>
                     <p className="text-muted-foreground max-w-2xl text-lg">
                         Point your camera at any meal. Our AI instantly identifies ingredients, estimates volume, and calculates hyper-accurate macros.
                     </p>

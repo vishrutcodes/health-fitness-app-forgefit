@@ -4,7 +4,7 @@
 
 ### *Forge Your Dream Physique*
 
-A premium, production-grade fitness web application combining **artificial intelligence**, **real-time data visualization**, and **interactive fitness tools** into a single, beautifully designed platform. ForgeFit empowers users to generate personalized workout plans, analyze nutrition on the fly, track body composition changes, log personal records, and receive real-time coaching — all powered by **Groq's LLaMA 3.3 70B** for text AI, **Groq's Llama 4 Scout Vision** for exercise classification from video, and **MediaPipe Pose Landmarker** for skeleton detection and joint angle analysis.
+A premium, production-grade fitness web application combining **artificial intelligence**, **real-time data visualization**, and **interactive fitness tools** into a single, beautifully designed platform. ForgeFit empowers users to generate personalized workout plans, analyze nutrition on the fly, track body composition changes, log personal records, and receive real-time coaching — all powered by **Groq's LLaMA 3.3 70B** for text AI, **Groq's Llama 4 Scout Vision** for exercise classification from video and **live food scanning**, and **MediaPipe Pose Landmarker** for skeleton detection and joint angle analysis.
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/vishrutcodes/health-fitness-app-forgefit)
 [![Next.js](https://img.shields.io/badge/Next.js-16.1.6-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
@@ -38,6 +38,7 @@ A premium, production-grade fitness web application combining **artificial intel
    - [Body Progress Tracker](#11--body-progress-tracker--measurement-dashboard)
    - [Personal Records Tracker](#12--personal-records-tracker--strength-dashboard)
    - [AI Form Analyzer (ML Pose Detection)](#13--ai-form-analyzer--ml-powered-exercise-form-analysis)
+   - [AI Food Analysis (Computer Vision)](#14--ai-powered-food-analysis--computer-vision-macro-scanner)
 6. [Page & Route Architecture](#-page--route-architecture)
 7. [Component Architecture](#-component-architecture)
 8. [Design System & UI Philosophy](#-design-system--ui-philosophy)
@@ -56,7 +57,7 @@ ForgeFit was born from a simple idea: **fitness guidance should be intelligent, 
 
 ForgeFit solves all three problems by combining:
 
-- **🤖 Artificial Intelligence** — 6 distinct AI-powered features that give personalized, context-aware fitness guidance using Meta's LLaMA 3.3 70B model and **Llama 4 Scout Vision** model through Groq's ultra-fast inference API
+- **🤖 Artificial Intelligence** — 7 distinct AI-powered features that give personalized, context-aware fitness guidance using Meta's LLaMA 3.3 70B model and **Llama 4 Scout Vision** model through Groq's ultra-fast inference API
 - **📊 Data-Driven Tracking** — Interactive Recharts visualizations for body composition and strength progress with full CRUD operations
 - **🧮 Scientific Calculators** — Evidence-based formulas (Mifflin-St Jeor for BMR, Epley for 1RM, U.S. Navy method for body fat) built into dedicated calculator components
 - **⏱️ Training Tools** — Configurable timers, phase planners, and periodization tools for structured training
@@ -70,7 +71,8 @@ ForgeFit solves all three problems by combining:
 | Static workout templates | AI generates custom programs based on your exact inputs |
 | Basic calorie counters | AI analyzes any food you describe and returns per-item macronutrient breakdowns |
 | No form guidance | AI provides step-by-step exercise technique, common mistakes, and variations |
-| Separate apps for each feature | 15+ features in a single, cohesive platform |
+| No food scanning | Live camera scans food and calculates exact macros using USDA-verified data |
+| Separate apps for each feature | 16+ features in a single, cohesive platform |
 | Generic UI | Premium dark-mode glassmorphism with Framer Motion micro-animations |
 | Monthly subscriptions | Completely free and open source |
 | No user accounts or data sync | Supabase Auth with profile dropdown, cloud-synced PRs & Progress across devices |
@@ -535,11 +537,49 @@ The AI Form Analyzer is ForgeFit's most technically sophisticated feature — a 
 
 This approach utterly destroys the limitations of primitive "single frame heuristic" form checkers, bringing elite, high-fidelity sports science coaching to any device.
 
+---
+
+### 14. 📸 AI-Powered Food Analysis — Computer Vision Macro Scanner
+
+**Component:** `src/components/sections/food-analyzer.tsx`
+**API Route:** `POST /api/ai/food-analyzer`
+**Vision Model:** Groq Llama 4 Scout (`meta-llama/llama-4-scout-17b-16e-instruct`)
+**Nutrition Engine:** Deterministic USDA-verified `LOCAL_NUTRITION_DB` (120+ foods)
+
+A live camera-based food scanner that identifies food items, counts individual pieces, estimates total weight, and calculates hyper-accurate macronutrient breakdowns — all in real time.
+
+#### How It Works
+
+1. **Live Camera Feed** — Uses `navigator.mediaDevices.getUserMedia` with `facingMode: "environment"` to activate the device's back camera directly in the browser.
+2. **Frame Capture** — On tap, the current video frame is drawn onto a hidden `<canvas>` element and converted to a Base64 JPEG.
+3. **Groq Vision Analysis** — The image is sent to Llama 4 Scout with a carefully engineered prompt that instructs the model to:
+   - Identify every distinct food item visible
+   - **Count individual pieces** (e.g., 2 bananas, 3 eggs)
+   - Estimate the **total combined weight** in grams for all pieces
+4. **Deterministic Macro Calculation** — The API matches each detected food against `LOCAL_NUTRITION_DB` (USDA-verified per-100g values) and calculates exact macros using strict scalar multiplication. **Zero AI hallucination** in the final numbers.
+5. **Results Display** — Shows total macros (Calories, Protein, Carbs, Fat), an itemized ingredient list with quantity badges (e.g., "2× Banana"), per-item macros, and an "Unverified" tag for foods not matched in the DB.
+
+#### Key Features
+
+- **Quantity-Aware Detection** — Unlike basic scanners, the AI counts individual pieces and sums their weight (e.g., 2 bananas × 120g = 240g total)
+- **USDA-Verified Math** — All macros are calculated deterministically from lab-verified constants, not estimated by the LLM
+- **Live Camera UX** — Scanning overlay with animated targeting brackets, scan line, and progress bar for a premium feel
+- **Scan Another Meal** — One-tap reset to re-activate the camera for the next plate
+
+#### Technical Pipeline
+```
+Camera Feed → Canvas Capture → Base64 JPEG → Groq Llama 4 Scout (Vision)
+→ JSON [{name, quantity, weight_g}] → LOCAL_NUTRITION_DB Lookup
+→ Deterministic Macro Math → Total + Per-Item Breakdown
+```
+
+---
+
 ## 📄 Page & Route Architecture
 
 | Route | Rendering | Component Count | Description |
 |-------|-----------|----------------|-------------|
-| `/` | Server-rendered (SSR) | 12 sections + AI Coach dialog | Main landing page — single-page scrollable layout with anchor-link navigation. Contains all calculators, AI features, timer, planner, and knowledge base. |
+| `/` | Server-rendered (SSR) | 13 sections + AI Coach dialog | Main landing page — single-page scrollable layout with anchor-link navigation. Contains all calculators, AI features, food scanner, timer, planner, and knowledge base. |
 | `/auth` | Client-rendered (CSR) | 1 page component | Combined Sign In / Sign Up page with tabbed toggle, dark polished UI, auto-login after signup. |
 | `/progress` | Client-rendered (CSR) | 1 page component | Body progress dashboard — standalone page with its own header, log dialog, Recharts chart, and history table. Data stored in Supabase. Requires authentication. |
 | `/prs` | Client-rendered (CSR) | 1 page component | Personal records dashboard — standalone page with its own header, log dialog, Recharts chart, and history table. Data stored in Supabase. Requires authentication. |
@@ -550,7 +590,7 @@ This approach utterly destroys the limitations of primitive "single frame heuris
 
 ```
 src/components/
-├── sections/                          # 12 page section components
+├── sections/                          # 13 page section components
 │   ├── navbar.tsx                     # [200 lines] Fixed nav with 9 links, "More" dropdown,
 │   │                                  #   mobile hamburger, profile dropdown (name/email/logout),
 │   │                                  #   welcome flash toast on login, Sign In button when logged out
@@ -579,6 +619,9 @@ src/components/
 │   │                                  #   detection, multi-signal scoring for 17 exercises,
 │   │                                  #   form corrections, model diagnostics (accuracy,
 │   │                                  #   confusion matrix, confidence predictions)
+│   ├── food-analyzer.tsx              # [360 lines] AI food scanner — live camera capture,
+│   │                                  #   Groq Vision identification, USDA macro calculation,
+│   │                                  #   quantity-aware detection, itemized breakdown
 │   └── footer.tsx                     # [80 lines] Site footer with links and branding
 │
 ├── ai-coach-dialog.tsx                # [154 lines] Floating chat widget — persistent conversation
@@ -595,7 +638,7 @@ src/components/
     └── table.tsx                      # Table components
 ```
 
-**Total:** ~3,500+ lines of hand-written, typed component code across 15 feature components.
+**Total:** ~3,900+ lines of hand-written, typed component code across 16 feature components.
 
 ---
 
@@ -653,6 +696,7 @@ All endpoints are Next.js API routes (server-side only). API key is never expose
 | `POST` | `/api/ai/diet/swap` | `{ targetProtein, targetCarbs, targetFat, avoidDish, mealName }` | `{ success: true, meal: { meal_name, dish, ingredients[], recipe, protein, carbs, fat, calories } }` | llama-3.3-70b-versatile |
 | `POST` | `/api/ai/roadmap` | `{ start, goal, timeframe, equipment }` | `{ phases: [{ name, duration, workouts[], milestones[] }] }` | llama-3.3-70b-versatile |
 | `POST` | `/api/ai/form-analyzer` | `{ frames: [base64_image, ...] }` | `{ exercise, confidence, form_score, corrections[], positives[] }` | llama-4-scout-17b-16e |
+| `POST` | `/api/ai/food-analyzer` | `{ image: base64_string }` | `{ totalMacros: {calories, protein, carbs, fats}, items: [{name, quantity, weight_g, calories, protein, carbs, fats, matched}] }` | llama-4-scout-17b-16e |
 
 **Security:** All API routes run server-side. The `GROQ_API_KEY` is accessed via `process.env` and never sent to the client. Rate limiting is handled by Groq's API-level quotas.
 
@@ -740,7 +784,8 @@ forgefit/
 │   │   │       ├── exercise/route.ts     # Exercise guide endpoint
 │   │   │       ├── diet/route.ts         # Diet plan endpoint
 │   │   │       ├── roadmap/route.ts      # Training roadmap endpoint
-│   │   │       └── form-analyzer/route.ts # Vision AI exercise classifier
+│   │   │       ├── form-analyzer/route.ts # Vision AI exercise classifier
+│   │   │       └── food-analyzer/route.ts # Vision AI food macro scanner
 │   │   │
 │   │   ├── auth/
 │   │   │   └── page.tsx                 # Combined Sign In / Sign Up page
