@@ -65,7 +65,7 @@ RULES:
                 cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
             }
 
-            const parsedItems: { name: string, weight_g: number }[] = JSON.parse(cleaned);
+            const parsedItems: { name: string, quantity?: number, weight_g: number }[] = JSON.parse(cleaned);
             
             if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
                  return NextResponse.json({
@@ -111,6 +111,7 @@ RULES:
                     return {
                         name: dbMatch.name, // Use the DB's official name
                         detectedName: item.name,
+                        quantity: item.quantity || 1,
                         weight_g: item.weight_g,
                         calories: cals,
                         protein: pro,
@@ -123,6 +124,7 @@ RULES:
                     return {
                         name: item.name,
                         detectedName: item.name,
+                        quantity: item.quantity || 1,
                         weight_g: item.weight_g,
                         calories: 0,
                         protein: 0,

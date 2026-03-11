@@ -10,6 +10,7 @@ import { Progress, ProgressIndicator, ProgressTrack } from "@/components/ui/prog
 interface FoodItem {
     name: string;
     detectedName: string;
+    quantity: number;
     weight_g: number;
     calories: number;
     protein: number;
@@ -300,7 +301,7 @@ export function FoodAnalyzer() {
                                     <div>
                                         <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                                             Identified Ingredients
-                                            <span className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full text-[10px]">{result.items.length} detected</span>
+                                            <span className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full text-[10px]">{result.items.reduce((sum, i) => sum + (i.quantity || 1), 0)} detected</span>
                                         </h4>
                                         <ScrollArea className="h-[250px] pr-4">
                                             <div className="space-y-3">
@@ -313,8 +314,8 @@ export function FoodAnalyzer() {
                                                         <div key={idx} className="p-3 rounded-md bg-zinc-900 border border-zinc-800 flex flex-col gap-2">
                                                             <div className="flex justify-between items-start">
                                                                 <div>
-                                                                    <p className="font-medium text-white text-sm">{item.name}</p>
-                                                                    <p className="text-xs text-zinc-500">Est. Volume: {item.weight_g}g</p>
+                                                                    <p className="font-medium text-white text-sm">{item.quantity > 1 ? `${item.quantity}× ` : ""}{item.name}</p>
+                                                                    <p className="text-xs text-zinc-500">Est. Volume: {item.weight_g}g{item.quantity > 1 ? ` (${item.quantity} pieces)` : ""}</p>
                                                                 </div>
                                                                 {!item.matched && (
                                                                     <span className="text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20 uppercase font-bold">Unverified</span>
