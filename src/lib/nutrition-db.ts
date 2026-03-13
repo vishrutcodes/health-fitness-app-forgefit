@@ -1215,7 +1215,7 @@ export const LOCAL_NUTRITION_DB: Record<string, NutritionFact> = {
     "biryani_chicken": {
         id: "biryani_chicken",
         name: "Chicken Biryani",
-        aliases: ["chicken biryani"],
+        aliases: ["chicken biryani", "biryani", "briyani", "biriyani", "hyderabadi biryani", "dum biryani", "chicken dum biryani", "spiced rice chicken"],
         proteinPer100g: 8.5,
         carbsPer100g: 22.0,
         fatPer100g: 5.5,
