@@ -1,39 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
 import { LOCAL_NUTRITION_DB, getFoodCatalog, calculateCalories } from "@/lib/nutrition-db";
-import { findBestMatch, detectCookingMethod } from "@/lib/food-matcher";
+import { findBestMatch, findTopMatches, detectCookingMethod } from "@/lib/food-matcher";
 
-const SYSTEM_PROMPT = `You are a world-class Food Forensics Expert and AI Nutritionist with deep knowledge of global cuisines.
-Your task is to analyze an image of food and identify EVERY distinct ingredient, including hidden ones like cooking oils, sauces, or dressings.
+const SYSTEM_PROMPT = `You are a world-class Food Forensics Expert and AI Nutritionist with encyclopedic knowledge of 200+ global cuisines.
+Your task is to analyze an image of food and identify EVERY distinct ingredient, including hidden ones like cooking oils, sauces, dressings, and garnishes.
 
 CRITICAL INSTRUCTIONS:
-1. Estimate the TOTAL weight in grams for ALL pieces of that item combined based on visual references (plate/bowl size).
-2. Detect the cooking method if visible (fried, grilled, steamed, baked, raw).
+1. Estimate the TOTAL weight in grams for ALL pieces of that item combined based on visual references.
+2. Detect the cooking method if visible (fried, grilled, steamed, baked, raw, roasted, braised, smoked).
 3. Assign a confidence score (0 to 1) for your identification of the item.
 4. Provide AI-estimated macros PER 100g for ANY food item. Do your best to estimate these scientifically.
+5. ALWAYS return estimatedMacrosPer100g even when you provide a food_id — this serves as a fallback validation.
 
-CULTURAL AWARENESS (VERY IMPORTANT):
-You MUST correctly identify foods from ALL cuisines. Pay attention to:
-- **Indian cuisine**: Biryani is NOT fried rice. Biryani has layered long-grain basmati rice with saffron/turmeric (yellow-white layers), whole spices (cardamom, cinnamon sticks, bay leaves), and marinated meat. Fried rice has shorter grain rice, soy sauce (darker uniform color), and stir-fried vegetables.
-- **Visual cues for Biryani**: Yellow/orange saffron-tinted rice, garnished with fried onions (birista), mint/cilantro, whole spices visible, often served in a deep dish/handi.
-- **Visual cues for Fried Rice**: Uniform color (often brown from soy sauce), visible wok-tossed vegetables (peas, carrots, corn), scrambled egg pieces, no whole spices.
-- Distinguish: Pulao vs Biryani vs Fried Rice — all are rice dishes but they are very different.
-- Distinguish: Naan vs Roti vs Paratha — naan is thick/fluffy/charred, roti is thin/flat, paratha is layered/flaky.
-- Distinguish: Dosa vs Crepe vs Pancake — dosa is thin/crispy/golden from rice batter, crepes are delicate, pancakes are fluffy/thick.
-- Distinguish: Samosa vs Spring Roll vs Empanada — different shapes, doughs, and fillings.
-- Distinguish: Tikka vs Kebab vs Grilled meat — tikka has tandoori red/orange marinade.
-- Distinguish: Curry vs Stew vs Soup — curries have spice-rich thick gravies.
+PORTION ESTIMATION CALIBRATION (VERY IMPORTANT):
+Use these reference objects to calibrate your weight estimates:
+- Standard dinner plate diameter: ~26cm (10 inches)
+- Standard bowl: ~15cm diameter, 350ml capacity
+- Palm-sized piece of protein: ~100g
+- Fist-sized amount of carbs (rice/pasta): ~150g cooked
+- Thumb-sized piece of fat/cheese: ~15g
+- Cupped hand of snacks/nuts: ~30g
+- Standard slice of bread: ~25-30g
+- 1 chapati/roti: ~40g, 1 naan: ~90g
+- Tea/coffee cup: ~200-240ml
+- If you see a standard Indian thali plate, each katori (small bowl) holds ~120-150g of curry/dal
 
-COMMONLY CONFUSED FOODS — PAY EXTRA ATTENTION:
+VISUAL ANALYSIS METHODOLOGY:
+Before naming each food, mentally note:
+- Color palette (saffron yellow? soy sauce brown? tomato red? cream white?)
+- Texture (crispy? layered? smooth gravy? dry? wet?)
+- Shape and presentation (flat? mounded? skewered? in a bowl?)
+- Garnishes and accompaniments (fried onions? cilantro? sesame? lime?)
+- Plate/vessel type (thali? ceramic? banana leaf? bowl? takeout box?)
+
+CULTURAL AWARENESS — COMMONLY CONFUSED FOODS:
 | Often Misidentified As | Correct Identification | Key Visual Difference |
 |------------------------|------------------------|----------------------|
 | Chicken Fried Rice | Chicken Biryani | Saffron layers, whole spices, fried onions, no soy sauce |
-| Pancake | Dosa | Thin, crispy, golden, large diameter |
-| Flatbread | Naan | Charred bubbles, teardrop shape, thick |
-| Flatbread | Roti/Chapati | Thin, round, no char marks |
-| Wrap | Burrito | Thick flour tortilla, cylindrical |
-| Stew | Curry | Rich spiced gravy, bright colors |
-| Dumpling | Momo | Pleated top, Nepali/Tibetan style |
+| Fried Rice | Pulao / Pilaf | Lighter color, distinct grain separation, whole spices |
+| Pancake | Dosa | Thin, crispy, golden, large diameter, rice batter |
+| Flatbread | Naan | Charred bubbles, teardrop shape, thick & fluffy |
+| Flatbread | Roti/Chapati | Thin, round, no char marks, brown spots |
+| Flatbread | Paratha | Layered/flaky, golden, sometimes stuffed |
+| Wrap | Burrito | Thick flour tortilla, cylindrical, sealed ends |
+| Stew | Curry | Rich spiced gravy, bright colors (red/yellow/green) |
+| Dumpling | Momo | Pleated top, Nepali/Tibetan style, steamed or fried |
+| Dumpling | Gyoza | Crescent shape, crispy bottom, pan-fried |
+| Dumpling | Dim Sum | Various shapes, bamboo steamer |
+| Soup | Ramen | Visible noodles, rich broth, specific toppings (egg, nori, chashu) |
+| Soup | Pho | Clear broth, fresh herbs, rice noodles, bean sprouts |
+| Soup | Laksa | Coconut curry broth, thick noodles |
+| Rice Bowl | Bibimbap | Colorful toppings arranged in sections, gochujang, egg on top |
+| Pasta | Chow Mein / Lo Mein | Asian noodles, stir-fried, soy-based sauce |
+| Grilled Meat | Kebab/Tikka | Marinated (red/orange tandoori color), skewered |
+| Grilled Meat | Satay | Small skewers, peanut sauce, Southeast Asian |
+| Grilled Meat | Suya | West African spice coating, small pieces on sticks |
+| Cake | Tiramisu | Layers of coffee-soaked ladyfingers + mascarpone |
+| Ice Cream | Gelato | Denser, often served in a flat tray not scooped high |
+| Fried Snack | Samosa | Triangular shape, pastry shell, potato filling |
+| Fried Snack | Spring Roll | Cylindrical, thin crispy wrapper |
+| Fried Snack | Empanada | Half-moon shape, thicker crust, crimped edges |
+| Lentil Dish | Dal Makhani | Creamy black dal with butter |
+| Lentil Dish | Dal Tadka | Yellow lentils with tempering (tadka) |
+| Cottage Cheese Curry | Palak Paneer | Green spinach gravy with white paneer cubes |
+| Chickpea Dish | Chole/Chana Masala | Brown gravy, whole chickpeas visible |
+| Rice Cake | Idli | White, round, soft, spongy, steamed |
+| Rice Cake | Tteokbokki | Korean, cylindrical, in red sauce |
+| Steamed Bun | Vada Pav | Fried potato ball in a bread bun, Indian |
+| Coffee | Cappuccino | Foam art, smaller cup, 1/3 espresso + 1/3 steam + 1/3 foam |
+| Coffee | Latte | Larger cup, more milk, thinner foam layer |
 
 Try to find the closest match from this database of known foods. If you find a very close match, output its exact ID in the "food_id" field. If there's no good match, leave "food_id" null.
 --- DATABASE CATALOG ---
@@ -47,8 +83,9 @@ You MUST respond in EXACTLY this JSON format, nothing else. Do not use markdown 
     "food_id": "<Exact ID from the catalog if matched, otherwise null>",
     "quantity": <Count of items, eg 2>,
     "weight_g": <Total estimated weight in grams>,
-    "cookingMethod": "<fried|grilled|steamed|raw|baked|none>",
+    "cookingMethod": "<fried|grilled|steamed|raw|baked|roasted|braised|smoked|none>",
     "confidence": <0.0 to 1.0>,
+    "category": "<protein|carbs|fat|dairy|fruit|vegetable|condiment|grain|legume|nut|beverage|dessert|prepared|snack>",
     "estimatedMacrosPer100g": {
         "protein": <number>,
         "carbs": <number>,
@@ -80,7 +117,7 @@ export async function POST(req: NextRequest) {
                 }
             ],
             temperature: 0.1,
-            max_tokens: 1500,
+            max_tokens: 2500,
         });
 
         const rawResponse = completion.choices[0]?.message?.content || "[]";
@@ -107,7 +144,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Pass 2: Server-side processing, merging with Fuzzy Matcher
+        // Pass 2: Server-side processing with Advanced Fuzzy Matcher v2
         let totalCalories = 0;
         let totalProtein = 0;
         let totalCarbs = 0;
@@ -124,23 +161,33 @@ export async function POST(req: NextRequest) {
             // Step 1: Check if the AI provided a valid DB ID
             let match = null;
             if (item.food_id && LOCAL_NUTRITION_DB[item.food_id]) {
-                match = { food: LOCAL_NUTRITION_DB[item.food_id], confidence: item.confidence || 0.9, matched: true, source: LOCAL_NUTRITION_DB[item.food_id].source };
+                match = {
+                    food: LOCAL_NUTRITION_DB[item.food_id],
+                    confidence: item.confidence || 0.9,
+                    matched: true,
+                    source: LOCAL_NUTRITION_DB[item.food_id].source
+                };
             }
 
-            // Step 2: Use Fuzzy Matcher if no exact ID or invalid
+            // Step 2: Use Advanced Fuzzy Matcher v2 with category hint
             if (!match) {
-                const fuzzyResult = findBestMatch(item.name);
-                if (fuzzyResult.foodId && fuzzyResult.confidence > 0.6) {
-                    match = { 
-                        food: fuzzyResult.food, 
-                        confidence: Math.max(item.confidence || 0, fuzzyResult.confidence), 
+                const categoryHint = item.category || undefined;
+                const topMatches = findTopMatches(item.name, 3, categoryHint);
+                const bestFuzzy = topMatches[0];
+
+                if (bestFuzzy.foodId && bestFuzzy.confidence > 0.55) {
+                    match = {
+                        food: bestFuzzy.food,
+                        confidence: Math.max(item.confidence || 0, bestFuzzy.confidence),
                         matched: true,
-                        source: fuzzyResult.food.source
+                        source: bestFuzzy.food.source
                     };
                 }
             }
 
-            // Step 3: Compute macros
+            // Step 3: Multi-pass confidence merging
+            // When both AI and fuzzy matcher agree, boost confidence
+            // When they disagree, use DB values but lower the confidence
             let pro = 0, car = 0, fat = 0, fib = 0, sug = 0, sod = 0, cals = 0;
             let source = "AI-Estimated";
             let matched = false;
@@ -157,7 +204,30 @@ export async function POST(req: NextRequest) {
                 cals = calculateCalories(pro, car, fat);
                 source = match.source;
                 matched = true;
-                displayConfidence = match.confidence;
+
+                // Multi-pass confidence: if AI confidence and matcher confidence are both high, boost
+                const aiConf = item.confidence || 0.5;
+                const matchConf = match.confidence;
+                if (aiConf > 0.8 && matchConf > 0.8) {
+                    displayConfidence = Math.min(0.98, (aiConf + matchConf) / 2 + 0.05);
+                } else if (aiConf > 0.6 && matchConf > 0.6) {
+                    displayConfidence = Math.max(aiConf, matchConf);
+                } else {
+                    // One of them is low — potential misidentification, use DB but lower confidence
+                    displayConfidence = Math.min(aiConf, matchConf) * 0.9 + 0.1;
+                }
+
+                // Validate AI estimates against DB if available (detect wild discrepancies)
+                if (item.estimatedMacrosPer100g) {
+                    const aiP = item.estimatedMacrosPer100g.protein || 0;
+                    const dbP = match.food.proteinPer100g;
+                    const proteinRatio = dbP > 0 ? Math.abs(aiP - dbP) / dbP : 0;
+                    // If AI protein estimate is more than 100% off from DB, lower confidence
+                    if (proteinRatio > 1.0) {
+                        displayConfidence = Math.max(0.3, displayConfidence - 0.15);
+                    }
+                }
+
                 item.name = match.food.name; // Use verified name
             } else if (item.estimatedMacrosPer100g) {
                 // Use AI Estimated Macros
