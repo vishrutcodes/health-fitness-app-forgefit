@@ -1,6 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import groq from "@/lib/groq";
-import { LOCAL_NUTRITION_DB } from "@/lib/nutrition-db";
+import { LOCAL_NUTRITION_DB, getFoodCatalog, calculateCalories } from "@/lib/nutrition-db";
+import { findBestMatch, detectCookingMethod } from "@/lib/food-matcher";
+
+// System Prompt for Vision API
+const SYSTEM_PROMPT = `You are a world-class Food Forensics Expert and AI Nutritionist.
+Your task is to analyze an image of food and identify EVERY distinct ingredient, including hidden ones like cooking oils, sauces, or dressings.
+
+CRITICAL INSTRUCTIONS:
+1. Estimate the TOTAL weight in grams for ALL pieces of that item combined based on visual references (plate/bowl size).
+2. Detect the cooking method if visible (fried, grilled, steamed, baked, raw).
+3. Assign a confidence score (0 to 1) for your identification of the item.
+4. Provide AI-estimated macros PER 100g for ANY food item. Do your best to estimate these scientifically.
+
+Try to find the closest match from this database of known foods. If you find a very close match, output its exact ID in the "food_id" field. If there's no good match, leave "food_id" null.
+--- DATABASE CATALOG ---
+${getFoodCatalog()}
+-------------------------
+
+You MUST respond in EXACTLY this JSON format, nothing else. Do not use markdown blocks (\`\`\`json). Just the raw array.
+[
+  {
+    "name": "<Descriptive name of the food>",
+    "food_id": "<Exact ID from the catalog if matched, otherwise null>",
+    "quantity": <Count of items, eg 2>,
+    "weight_g": <Total estimated weight in grams>,
+    "cookingMethod": "<fried|grilled|steamed|raw|baked|none>",
+    "confidence": <0.0 to 1.0>,
+    "estimatedMacrosPer100g": {
+        "protein": <number>,
+        "carbs": <number>,
+        "fat": <number>,
+        "fiber": <number>,
+        "sugar": <number>,
+        "sodiumMg": <number>
+    }
+  }
+]`;
 
 export async function POST(req: NextRequest) {
     try {
@@ -16,145 +52,143 @@ export async function POST(req: NextRequest) {
                 {
                     role: "user",
                     content: [
-                        {
-                            type: "text",
-                            text: `You are an expert nutritionist and computer vision AI. Analyze this image of food.
-
-TASK: Identify every distinct food item visible and strictly estimate the TOTAL weight in grams for ALL pieces of that item combined.
-
-CRITICAL COUNTING RULES:
-- COUNT every individual piece carefully. If you see 2 bananas, report the COMBINED weight of BOTH bananas, not just one.
-- If you see 3 eggs, report the TOTAL weight of all 3 eggs combined.
-- Always count ALL visible pieces of the same food and sum their weights.
-
-You MUST respond in EXACTLY this JSON format, nothing else:
-[
-  {
-    "name": "<Standard name of the food item>",
-    "quantity": <Number of individual pieces counted>,
-    "weight_g": <TOTAL estimated weight of ALL pieces combined in grams>
-  }
-]
-
-RULES:
-- "name" should be the basic ingredient name (e.g., "Banana", "Chicken Breast", "Brown Rice", "Olive Oil", "Walnuts").
-- "quantity" is how many individual pieces/units you can see of this item.
-- "weight_g" is the TOTAL weight of ALL pieces combined. For example: 2 bananas at ~120g each = 240g total.
-- Be incredibly observant. Look for hidden calories like oils, sauces, or butter that might be mixed in.
-- Estimate weight based on visual size relative to plate/surface.
-- If you see nothing resembling food, return an empty array [].
-- Respond with ONLY the JSON array, no markdown formatting (\`\`\`json), no backticks, no explanation. Just the raw array.`,
-                        },
-                        {
-                            type: "image_url",
-                            image_url: { url: image },
-                        }
-                    ],
-                },
+                        { type: "text", text: SYSTEM_PROMPT },
+                        { type: "image_url", image_url: { url: image } }
+                    ]
+                }
             ],
             temperature: 0.1,
-            max_tokens: 512,
+            max_tokens: 1500,
         });
 
         const rawResponse = completion.choices[0]?.message?.content || "[]";
 
-        // Parse the JSON response
+        // Parse JSON
+        let parsedItems: any[] = [];
         try {
             let cleaned = rawResponse.trim();
             if (cleaned.startsWith("```")) {
                 cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
             }
-
-            const parsedItems: { name: string, quantity?: number, weight_g: number }[] = JSON.parse(cleaned);
-            
-            if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-                 return NextResponse.json({
-                    totalMacros: { calories: 0, protein: 0, carbs: 0, fats: 0 },
-                    items: [],
-                    message: "No recognizable food items found."
-                });
-            }
-
-            // Calculate macros strictly using our deterministic database
-            let totalCalories = 0;
-            let totalProtein = 0;
-            let totalCarbs = 0;
-            let totalFats = 0;
-            
-            const detailedItems = parsedItems.map(item => {
-                // Find the closest match in our DB by scanning keys/names
-                const searchTerm = item.name.toLowerCase();
-                let bestMatchKey = null;
-
-                for (const key of Object.keys(LOCAL_NUTRITION_DB)) {
-                    const dbItem = LOCAL_NUTRITION_DB[key];
-                    if (dbItem.name.toLowerCase().includes(searchTerm) || searchTerm.includes(dbItem.name.toLowerCase())) {
-                        bestMatchKey = key;
-                        break;
-                    }
-                }
-                
-                if (bestMatchKey) {
-                    const dbMatch = LOCAL_NUTRITION_DB[bestMatchKey];
-                    // Calculate exact macros based on the detected weight
-                    const multiplier = item.weight_g / 100;
-                    const cals = Math.round((dbMatch.proteinPer100g * 4 + dbMatch.carbsPer100g * 4 + dbMatch.fatPer100g * 9) * multiplier);
-                    const pro = Math.round(dbMatch.proteinPer100g * multiplier * 10) / 10;
-                    const car = Math.round(dbMatch.carbsPer100g * multiplier * 10) / 10;
-                    const fat = Math.round(dbMatch.fatPer100g * multiplier * 10) / 10;
-                    
-                    totalCalories += cals;
-                    totalProtein += pro;
-                    totalCarbs += car;
-                    totalFats += fat;
-                    
-                    return {
-                        name: dbMatch.name, // Use the DB's official name
-                        detectedName: item.name,
-                        quantity: item.quantity || 1,
-                        weight_g: item.weight_g,
-                        calories: cals,
-                        protein: pro,
-                        carbs: car,
-                        fats: fat,
-                        matched: true
-                    };
-                } else {
-                    // If no match in DB, we still include it but signal it's unmatched
-                    return {
-                        name: item.name,
-                        detectedName: item.name,
-                        quantity: item.quantity || 1,
-                        weight_g: item.weight_g,
-                        calories: 0,
-                        protein: 0,
-                        carbs: 0,
-                        fats: 0,
-                        matched: false
-                    };
-                }
-            });
-
-            return NextResponse.json({
-                totalMacros: {
-                    calories: totalCalories,
-                    protein: Math.round(totalProtein * 10) / 10,
-                    carbs: Math.round(totalCarbs * 10) / 10,
-                    fats: Math.round(totalFats * 10) / 10
-                },
-                items: detailedItems
-            });
-
+            parsedItems = JSON.parse(cleaned);
+            if (!Array.isArray(parsedItems)) parsedItems = [];
         } catch (parseErr) {
             console.error("[FoodScanner API] Failed to parse Groq response:", rawResponse);
             return NextResponse.json({ error: "Failed to parse AI response." }, { status: 500 });
         }
-    } catch (error: unknown) {
+
+        if (parsedItems.length === 0) {
+            return NextResponse.json({
+                totalMacros: { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodiumMg: 0 },
+                items: [],
+                message: "No recognizable food items found."
+            });
+        }
+
+        // Pass 2: Server-side processing, merging with Fuzzy Matcher
+        let totalCalories = 0;
+        let totalProtein = 0;
+        let totalCarbs = 0;
+        let totalFats = 0;
+        let totalFiber = 0;
+        let totalSugar = 0;
+        let totalSodium = 0;
+
+        const detailedItems = parsedItems.map(item => {
+            const weightMultiplier = (item.weight_g || 100) / 100;
+            const fallbackMethod = detectCookingMethod(item.name);
+            const method = item.cookingMethod !== "none" ? item.cookingMethod : fallbackMethod;
+
+            // Step 1: Check if the AI provided a valid DB ID
+            let match = null;
+            if (item.food_id && LOCAL_NUTRITION_DB[item.food_id]) {
+                match = { food: LOCAL_NUTRITION_DB[item.food_id], confidence: item.confidence || 0.9, matched: true, source: LOCAL_NUTRITION_DB[item.food_id].source };
+            }
+
+            // Step 2: Use Fuzzy Matcher if no exact ID or invalid
+            if (!match) {
+                const fuzzyResult = findBestMatch(item.name);
+                if (fuzzyResult.foodId && fuzzyResult.confidence > 0.6) {
+                    match = { 
+                        food: fuzzyResult.food, 
+                        confidence: Math.max(item.confidence || 0, fuzzyResult.confidence), 
+                        matched: true,
+                        source: fuzzyResult.food.source
+                    };
+                }
+            }
+
+            // Step 3: Compute macros
+            let pro = 0, car = 0, fat = 0, fib = 0, sug = 0, sod = 0, cals = 0;
+            let source = "AI-Estimated";
+            let matched = false;
+            let displayConfidence = item.confidence || 0.5;
+
+            if (match) {
+                // Use DB Verified Macros
+                pro = match.food.proteinPer100g * weightMultiplier;
+                car = match.food.carbsPer100g * weightMultiplier;
+                fat = match.food.fatPer100g * weightMultiplier;
+                fib = (match.food.fiberPer100g || 0) * weightMultiplier;
+                sug = (match.food.sugarPer100g || 0) * weightMultiplier;
+                sod = (match.food.sodiumMg || 0) * weightMultiplier;
+                cals = calculateCalories(pro, car, fat);
+                source = match.source;
+                matched = true;
+                displayConfidence = match.confidence;
+                item.name = match.food.name; // Use verified name
+            } else if (item.estimatedMacrosPer100g) {
+                // Use AI Estimated Macros
+                pro = (item.estimatedMacrosPer100g.protein || 0) * weightMultiplier;
+                car = (item.estimatedMacrosPer100g.carbs || 0) * weightMultiplier;
+                fat = (item.estimatedMacrosPer100g.fat || 0) * weightMultiplier;
+                fib = (item.estimatedMacrosPer100g.fiber || 0) * weightMultiplier;
+                sug = (item.estimatedMacrosPer100g.sugar || 0) * weightMultiplier;
+                sod = (item.estimatedMacrosPer100g.sodiumMg || 0) * weightMultiplier;
+                cals = calculateCalories(pro, car, fat);
+            }
+
+            totalCalories += cals;
+            totalProtein += pro;
+            totalCarbs += car;
+            totalFats += fat;
+            totalFiber += fib;
+            totalSugar += sug;
+            totalSodium += sod;
+
+            return {
+                name: item.name,
+                detectedName: item.name,
+                quantity: item.quantity || 1,
+                weight_g: item.weight_g || 100,
+                calories: Math.round(cals),
+                protein: Math.round(pro * 10) / 10,
+                carbs: Math.round(car * 10) / 10,
+                fats: Math.round(fat * 10) / 10,
+                fiber: Math.round(fib * 10) / 10,
+                sugar: Math.round(sug * 10) / 10,
+                sodiumMg: Math.round(sod),
+                cookingMethod: method,
+                confidence: Number(displayConfidence.toFixed(2)),
+                matched,
+                source
+            };
+        });
+
+        return NextResponse.json({
+            totalMacros: {
+                calories: Math.round(totalCalories),
+                protein: Math.round(totalProtein * 10) / 10,
+                carbs: Math.round(totalCarbs * 10) / 10,
+                fats: Math.round(totalFats * 10) / 10,
+                fiber: Math.round(totalFiber * 10) / 10,
+                sugar: Math.round(totalSugar * 10) / 10,
+                sodiumMg: Math.round(totalSodium)
+            },
+            items: detailedItems
+        });
+    } catch (error: any) {
         console.error("[FoodScanner API] Error:", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json(
-            { error: `Groq Vision API failed: ${message}` },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error.message || "Unknown error" }, { status: 500 });
     }
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, Scan, Activity, ArrowRight, RotateCcw } from "lucide-react";
+import { Camera, Scan, Activity, ArrowRight, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress, ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface FoodItem {
     name: string;
@@ -16,7 +17,13 @@ interface FoodItem {
     protein: number;
     carbs: number;
     fats: number;
+    fiber: number;
+    sugar: number;
+    sodiumMg: number;
+    cookingMethod: string | null;
+    confidence: number;
     matched: boolean;
+    source: string;
 }
 
 interface ScanResult {
@@ -25,9 +32,35 @@ interface ScanResult {
         protein: number;
         carbs: number;
         fats: number;
+        fiber: number;
+        sugar: number;
+        sodiumMg: number;
     };
     items: FoodItem[];
     message?: string;
+}
+
+function getConfidenceColor(conf: number) {
+    if (conf >= 0.8) return "bg-green-500/10 text-green-400 border-green-500/20";
+    if (conf >= 0.5) return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+    return "bg-red-500/10 text-red-400 border-red-500/20";
+}
+
+function getCookingMethodIcon(method: string | null) {
+    if (!method) return null;
+    switch (method.toLowerCase()) {
+        case "fried": return "🔥 Fried";
+        case "grilled": return "🍳 Grilled";
+        case "steamed": return "🫕 Steamed";
+        case "baked": return "🥖 Baked";
+        case "raw": return "🥗 Raw";
+        case "roasted": return "🔥 Roasted";
+        case "boiled": return "💧 Boiled";
+        case "braised": return "🍲 Braised";
+        case "sauteed": return "🍳 Sauteed";
+        case "smoked": return "💨 Smoked";
+        default: return `🍽️ ${method.charAt(0).toUpperCase() + method.slice(1)}`;
+    }
 }
 
 export function FoodAnalyzer() {
@@ -38,6 +71,13 @@ export function FoodAnalyzer() {
     const [scanProgress, setScanProgress] = useState(0);
     const [result, setResult] = useState<ScanResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Expand state for items
+    const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
+
+    const toggleExpand = (idx: number) => {
+        setExpandedItems(prev => ({ ...prev, [idx]: !prev[idx] }));
+    };
 
     // Start the camera
     const startCamera = async () => {
@@ -51,6 +91,7 @@ export function FoodAnalyzer() {
             }
             setError(null);
             setResult(null);
+            setExpandedItems({});
         } catch (err) {
             console.error("Error accessing camera:", err);
             setError("Could not access camera. Please ensure you have granted permission.");
@@ -105,7 +146,6 @@ export function FoodAnalyzer() {
         }, 500);
 
         try {
-            // Send to Groq Vision API
             const response = await fetch("/api/ai/food-analyzer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -122,8 +162,6 @@ export function FoodAnalyzer() {
 
             const data: ScanResult = await response.json();
             setResult(data);
-            
-            // Stop the camera once we have a result
             stopCamera();
 
         } catch (err) {
@@ -138,7 +176,6 @@ export function FoodAnalyzer() {
 
     return (
         <section id="food-scanner" className="py-20 bg-background relative overflow-hidden">
-            {/* Background elements */}
             <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-forge-orange/10 rounded-full blur-[100px] -z-10 translate-y-[-50%]" />
             <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] -z-10 translate-y-[-50%]" />
             
@@ -157,7 +194,6 @@ export function FoodAnalyzer() {
                 </div>
 
                 <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-                    
                     {/* Camera Side */}
                     <Card className="bg-card/50 backdrop-blur-xl border-white/10 shadow-2xl overflow-hidden flex flex-col">
                         <CardHeader className="bg-white/5 border-b border-white/5 pb-4">
@@ -169,7 +205,6 @@ export function FoodAnalyzer() {
                         </CardHeader>
                         
                         <CardContent className="p-0 relative grow bg-black aspect-video flex items-center justify-center">
-                            {/* Hidden canvas for capturing the frame */}
                             <canvas ref={canvasRef} className="hidden" />
                             
                             {!stream && !result && (
@@ -182,7 +217,6 @@ export function FoodAnalyzer() {
                                 </div>
                             )}
 
-                            {/* Active Video Feed */}
                             <video 
                                 ref={videoRef} 
                                 autoPlay 
@@ -191,19 +225,17 @@ export function FoodAnalyzer() {
                                 className={`w-full h-full object-cover ${!stream ? 'hidden' : 'block'}`}
                             />
 
-                            {/* Scanning Overlay UI */}
                             {isScanning && (
                                 <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden rounded-md">
-                                    <div className="absolute inset-0 bg-forge-orange/10 transition-opacity duration-300"></div>
+                                    <div className="absolute inset-0 bg-forge-orange/10 transition-opacity duration-300" />
                                     <div 
                                         className="h-1 w-full bg-forge-orange absolute top-0 shadow-[0_0_15px_rgba(255,87,34,0.8)] animate-scan-line"
                                         style={{ top: `${Math.max(5, scanProgress)}%` }}
-                                    ></div>
-                                    {/* Targeting Brackets */}
-                                    <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-forge-orange"></div>
-                                    <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-forge-orange"></div>
-                                    <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-forge-orange"></div>
-                                    <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-forge-orange"></div>
+                                    />
+                                    <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-forge-orange" />
+                                    <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-forge-orange" />
+                                    <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-forge-orange" />
+                                    <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-forge-orange" />
                                 </div>
                             )}
                         </CardContent>
@@ -269,7 +301,7 @@ export function FoodAnalyzer() {
                         
                         <CardContent className="p-6 grow">
                             {!result ? (
-                                <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4">
+                                <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4 min-h-[300px]">
                                     <div className="w-16 h-16 rounded-full border-2 border-dashed border-zinc-700 flex items-center justify-center">
                                         <ArrowRight className="h-6 w-6 opacity-50" />
                                     </div>
@@ -300,11 +332,11 @@ export function FoodAnalyzer() {
 
                                     {/* Itemized Breakdown List */}
                                     <div>
-                                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center justify-between">
                                             Identified Ingredients
                                             <span className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full text-[10px]">{result.items.reduce((sum, i) => sum + (i.quantity || 1), 0)} detected</span>
                                         </h4>
-                                        <ScrollArea className="h-[250px] pr-4">
+                                        <ScrollArea className="h-[280px] pr-2">
                                             <div className="space-y-3">
                                                 {result.items.length === 0 ? (
                                                     <p className="text-sm text-zinc-500 italic p-4 text-center border border-dashed border-zinc-800 rounded-md">
@@ -312,24 +344,67 @@ export function FoodAnalyzer() {
                                                     </p>
                                                 ) : (
                                                     result.items.map((item, idx) => (
-                                                        <div key={idx} className="p-3 rounded-md bg-zinc-900 border border-zinc-800 flex flex-col gap-2">
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <p className="font-medium text-white text-sm">{item.quantity > 1 ? `${item.quantity}× ` : ""}{item.name}</p>
-                                                                    <p className="text-xs text-zinc-500">Est. Volume: {item.weight_g}g{item.quantity > 1 ? ` (${item.quantity} pieces)` : ""}</p>
+                                                        <Collapsible key={idx} open={expandedItems[idx]} onOpenChange={() => toggleExpand(idx)} className="rounded-md bg-zinc-900/50 border border-zinc-800 focus-within:ring-1 focus-within:ring-zinc-700">
+                                                            <CollapsibleTrigger className="w-full text-left p-3 flex flex-col gap-2 hover:bg-zinc-800/30 transition-colors">
+                                                                <div className="flex justify-between items-start w-full gap-2">
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <p className="font-bold text-white text-sm truncate">
+                                                                                {item.quantity > 1 ? `${item.quantity}× ` : ""}{item.name}
+                                                                            </p>
+                                                                            {item.source === "USDA" ? (
+                                                                                <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 uppercase font-black whitespace-nowrap">USDA</span>
+                                                                            ) : item.source === "Nutritionix" || item.source === "Brand-Verified" ? (
+                                                                                <span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/20 uppercase font-black whitespace-nowrap">Verified</span>
+                                                                            ) : (
+                                                                                <span className="text-[9px] bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded uppercase font-black whitespace-nowrap">AI Est.</span>
+                                                                            )}
+                                                                            
+                                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase font-black whitespace-nowrap ${getConfidenceColor(item.confidence)}`}>
+                                                                                {(item.confidence * 100).toFixed(0)}% Conf.
+                                                                            </span>
+                                                                            
+                                                                            {getCookingMethodIcon(item.cookingMethod) && (
+                                                                                <span className="text-[10px] bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                                                                    {getCookingMethodIcon(item.cookingMethod)}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-zinc-500 mt-1">Est. Volume: {item.weight_g}g</p>
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex items-center ml-2 text-zinc-500">
+                                                                        {expandedItems[idx] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                                    </div>
                                                                 </div>
-                                                                {!item.matched && (
-                                                                    <span className="text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20 uppercase font-bold">Unverified</span>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex gap-3 text-xs text-zinc-400">
-                                                                <span>{item.calories} kcal</span>
-                                                                <span>•</span>
-                                                                <span className="text-forge-orange/80">{item.protein}P</span>
-                                                                <span className="text-blue-400/80">{item.carbs}C</span>
-                                                                <span className="text-orange-400/80">{item.fats}F</span>
-                                                            </div>
-                                                        </div>
+                                                                <div className="flex gap-3 text-xs font-medium tracking-wide">
+                                                                    <span className="text-white bg-zinc-800 px-1.5 py-0.5 rounded">{item.calories} kcal</span>
+                                                                    <span className="text-forge-orange bg-forge-orange/10 px-1.5 py-0.5 rounded">{item.protein}P</span>
+                                                                    <span className="text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">{item.carbs}C</span>
+                                                                    <span className="text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded">{item.fats}F</span>
+                                                                </div>
+                                                            </CollapsibleTrigger>
+                                                            <CollapsibleContent>
+                                                                <div className="px-3 pb-3 pt-1 border-t border-zinc-800/50 flex gap-4 text-xs text-zinc-400 bg-zinc-900/30">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="uppercase text-[9px] font-bold text-zinc-600">Fiber</span>
+                                                                        <span className="font-mono text-zinc-300">{item.fiber}g</span>
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="uppercase text-[9px] font-bold text-zinc-600">Sugar</span>
+                                                                        <span className="font-mono text-zinc-300">{item.sugar}g</span>
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="uppercase text-[9px] font-bold text-zinc-600">Sodium</span>
+                                                                        <span className="font-mono text-zinc-300">{item.sodiumMg}mg</span>
+                                                                    </div>
+                                                                    <div className="flex flex-col ml-auto text-right">
+                                                                        <span className="uppercase text-[9px] font-bold text-zinc-600">Original AI Det. Name</span>
+                                                                        <span className="italic truncate max-w-[120px]" title={item.detectedName}>"{item.detectedName}"</span>
+                                                                    </div>
+                                                                </div>
+                                                            </CollapsibleContent>
+                                                        </Collapsible>
                                                     ))
                                                 )}
                                             </div>
@@ -344,7 +419,6 @@ export function FoodAnalyzer() {
                 </div>
             </div>
             
-            {/* Custom animation for the scan line */}
             <style jsx global>{`
                 @keyframes scan-line {
                     0% { transform: translateY(0); opacity: 0; }

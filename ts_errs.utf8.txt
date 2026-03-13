@@ -1,0 +1,7 @@
+src/components/sections/food-analyzer.tsx(9,69): error TS2307: Cannot find module '@/components/ui/collapsible' or its corresponding type declarations.
+src/lib/nutrition-db.ts(2471,9): error TS2322: Type '"snack"' is not assignable to type '"protein" | "carbs" | "fat" | "dairy" | "fruit" | "vegetable" | "condiment" | "grain" | "legume" | "nut" | "beverage" | "dessert" | "prepared"'.
+src/lib/nutrition-db.ts(2476,9): error TS2322: Type '"snack"' is not assignable to type '"protein" | "carbs" | "fat" | "dairy" | "fruit" | "vegetable" | "condiment" | "grain" | "legume" | "nut" | "beverage" | "dessert" | "prepared"'.
+src/lib/nutrition-db.ts(2481,9): error TS2322: Type '"snack"' is not assignable to type '"protein" | "carbs" | "fat" | "dairy" | "fruit" | "vegetable" | "condiment" | "grain" | "legume" | "nut" | "beverage" | "dessert" | "prepared"'.
+src/lib/nutrition-db.ts(2486,9): error TS2322: Type '"snack"' is not assignable to type '"protein" | "carbs" | "fat" | "dairy" | "fruit" | "vegetable" | "condiment" | "grain" | "legume" | "nut" | "beverage" | "dessert" | "prepared"'.
+src/lib/nutrition-db.ts(2724,9): error TS2322: Type '"snack"' is not assignable to type '"protein" | "carbs" | "fat" | "dairy" | "fruit" | "vegetable" | "condiment" | "grain" | "legume" | "nut" | "beverage" | "dessert" | "prepared"'.
+src/lib/nutrition-db.ts(2729,9): error TS2322: Type '"snack"' is not assignable to type '"protein" | "carbs" | "fat" | "dairy" | "fruit" | "vegetable" | "condiment" | "grain" | "legume" | "nut" | "beverage" | "dessert" | "prepared"'.
