@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Flame, Mail, Lock, User, Loader2, ArrowRight } from "lucide-react";
+import { Flame, Mail, Lock, User, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,11 +17,13 @@ export default function AuthPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
+        setSuccessMsg("");
 
         const supabase = createClient();
 
@@ -29,7 +31,10 @@ export default function AuthPage() {
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
-                options: { data: { full_name: name } },
+                options: {
+                    data: { full_name: name },
+                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                },
             });
             if (error) {
                 setError(error.message);
@@ -41,15 +46,9 @@ export default function AuthPage() {
                 window.location.href = "/";
                 return;
             }
-            // Fallback: try manual sign-in
-            const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-            if (signInErr) {
-                // Account created but needs email confirmation
-                setError("Account created! Please check your email to confirm, then sign in.");
-                setLoading(false);
-                return;
-            }
-            window.location.href = "/";
+            // Email confirmation is ON — tell user to check their inbox
+            setSuccessMsg("✅ Confirmation email sent! Check your inbox and click the link to activate your account.");
+            setLoading(false);
         } else {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
@@ -90,13 +89,13 @@ export default function AuthPage() {
                         {/* Mode Toggle */}
                         <div className="flex rounded-lg bg-slate-900/50 p-1 mb-6">
                             <button
-                                onClick={() => { setMode("signin"); setError(""); }}
+                                onClick={() => { setMode("signin"); setError(""); setSuccessMsg(""); }}
                                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-all ${mode === "signin" ? "bg-forge-orange text-white shadow-md" : "text-slate-400 hover:text-white"}`}
                             >
                                 Sign In
                             </button>
                             <button
-                                onClick={() => { setMode("signup"); setError(""); }}
+                                onClick={() => { setMode("signup"); setError(""); setSuccessMsg(""); }}
                                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-all ${mode === "signup" ? "bg-forge-orange text-white shadow-md" : "text-slate-400 hover:text-white"}`}
                             >
                                 Sign Up
@@ -131,8 +130,17 @@ export default function AuthPage() {
                                 </div>
                             </div>
 
+                            {/* Error Message */}
                             {error && (
                                 <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</motion.p>
+                            )}
+
+                            {/* Success Message */}
+                            {successMsg && (
+                                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2.5 flex items-start gap-2">
+                                    <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                                    <span>{successMsg}</span>
+                                </motion.div>
                             )}
 
                             <Button type="submit" disabled={loading} className="w-full h-11 bg-linear-to-r from-forge-orange to-forge-orange-light text-white font-semibold shadow-lg shadow-forge-orange/25 hover:shadow-forge-orange/40 transition-all border-0 text-base">
